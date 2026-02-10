@@ -1,0 +1,106 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;500;700&family=Outfit:wght@500;700;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-body: 'DM Sans', sans-serif;
+  --font-display: 'Outfit', sans-serif;
+
+  /* PetCrushes Palette: Playful, Warm, Professional */
+  /* Primary: Vibrant Orange/Coral */
+  --primary: 15 95% 60%;
+  --primary-foreground: 0 0% 100%;
+
+  /* Secondary: Trustworthy Purple */
+  --secondary: 260 60% 96%;
+  --secondary-foreground: 260 40% 40%;
+
+  /* Accent: Friendly Teal */
+  --accent: 180 70% 97%;
+  --accent-foreground: 180 40% 30%;
+
+  /* Destructive: Soft Red */
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 98%;
+
+  /* Backgrounds */
+  --background: 30 20% 99%;
+  --foreground: 222 47% 11%;
+  
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  
+  --muted: 30 10% 96%;
+  --muted-foreground: 215 16% 47%;
+  
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 15 95% 60%;
+  
+  --radius: 1rem;
+}
+
+.dark {
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
+  
+  --card: 222 47% 10%;
+  --card-foreground: 210 40% 98%;
+  
+  --popover: 222 47% 10%;
+  --popover-foreground: 210 40% 98%;
+  
+  --primary: 15 95% 60%;
+  --primary-foreground: 0 0% 100%;
+  
+  --secondary: 260 30% 20%;
+  --secondary-foreground: 260 40% 90%;
+  
+  --accent: 180 30% 20%;
+  --accent-foreground: 180 40% 90%;
+  
+  --muted: 217 19% 27%;
+  --muted-foreground: 215 20% 65%;
+  
+  --border: 217 19% 27%;
+  --input: 217 19% 27%;
+  --ring: 15 95% 60%;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/20;
+    font-family: var(--font-body);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    @apply font-bold tracking-tight text-foreground;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .glass-card {
+    @apply bg-white/80 dark:bg-black/50 backdrop-blur-md border border-white/20 dark:border-white/10 shadow-lg;
+  }
+}
+
+/* Custom Animations */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
