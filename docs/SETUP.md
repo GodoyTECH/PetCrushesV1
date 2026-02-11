@@ -57,3 +57,11 @@
 - CORS configurável por `CORS_ORIGIN` com suporte a múltiplas origens.
 - Sessão/cookies ajustadas para acoplado (`lax`) e separado em produção (`none` + `secure`).
 - Endpoint de healthcheck adicionado: `GET /api/health`.
+
+
+### ETAPA 4 — Render + Neon (concluída)
+- API preparada para execução standalone no Render com `SERVE_CLIENT=false`.
+- Boot de produção com logs de serviço e ambiente (sem secrets).
+- Healthcheck `/api/health` validado com API em produção local simulada.
+- Documentação de setup Render + Neon + Drizzle detalhada em `docs/DEPLOY.md`.
+=======

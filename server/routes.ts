@@ -185,8 +185,13 @@ export async function registerRoutes(
      res.json({ url: mockUrl });
   });
 
-  // Seed Database (Run once if empty)
-  await seedDatabase();
+  // Seed Database (dev helper)
+  const shouldSeedDatabase =
+    process.env.NODE_ENV !== "production" && process.env.SKIP_DB_SEED !== "true";
+
+  if (shouldSeedDatabase) {
+    await seedDatabase();
+  }
 
   return httpServer;
 }

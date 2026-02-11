@@ -152,7 +152,11 @@ app.use((req, res, next) => {
       reusePort: true,
     },
     () => {
-      log(`serving on port ${port}`);
+      const serveClient = process.env.SERVE_CLIENT !== "false";
+      log(`[petcrushesv2-api] listening on :${port}`);
+      log(
+        `[petcrushesv2-api] env NODE_ENV=${process.env.NODE_ENV ?? "development"} SERVE_CLIENT=${serveClient}`,
+      );
     },
   );
 })();
