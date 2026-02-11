@@ -2,26 +2,25 @@ import { db } from "./db";
 import {
   pets, likes, matches, messages, reports,
   type Pet, type InsertPet,
-  type Like, type Match, type Message, type InsertMessage,
-  type Report, type CreateLikeRequest
+  type Match, type Message, type InsertMessage, type Report
 } from "@shared/schema";
-import { users, type User, type InsertUser } from "@shared/models/auth";
-import { eq, or, and, desc, inArray } from "drizzle-orm";
+import { users, type User, type UpsertUser } from "@shared/models/auth";
+import { eq, or, and, desc } from "drizzle-orm";
 
 export interface IStorage {
   // Users
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>; // Replit ID
-  createUser(user: InsertUser): Promise<User>;
-  updateUser(id: string, user: Partial<InsertUser>): Promise<User>;
+  createUser(user: UpsertUser): Promise<User>;
+  updateUser(id: string, user: Partial<UpsertUser>): Promise<User>;
 
   // Pets
   getPet(id: number): Promise<Pet | undefined>;
   getPets(filters?: {
     species?: string;
     breed?: string;
-    gender?: string;
-    objective?: string;
+    gender?: Pet["gender"];
+    objective?: Pet["objective"];
     region?: string;
     isDonation?: boolean;
     ownerId?: string; // For "My Pets" - changed to string
@@ -31,7 +30,7 @@ export interface IStorage {
   deletePet(id: number): Promise<void>;
 
   // Likes & Matches
-  createLike(likerPetId: number, targetPetId: number): Promise<{ like: Like; isMatch: boolean; match?: Match }>;
+  createLike(likerPetId: number, targetPetId: number): Promise<{ like: { id: number; likerPetId: number; targetPetId: number; createdAt: Date | null }; isMatch: boolean; match?: Match }>;
   getMatches(petId: number): Promise<Match[]>;
   getMatch(id: number): Promise<Match | undefined>;
 
@@ -61,12 +60,12 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
+  async createUser(insertUser: UpsertUser): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
 
-  async updateUser(id: string, updates: Partial<InsertUser>): Promise<User> {
+  async updateUser(id: string, updates: Partial<UpsertUser>): Promise<User> {
       const [user] = await db.update(users).set(updates).where(eq(users.id, id)).returning();
       return user;
   }
@@ -79,8 +78,8 @@ export class DatabaseStorage implements IStorage {
   async getPets(filters?: {
     species?: string;
     breed?: string;
-    gender?: string;
-    objective?: string;
+    gender?: Pet["gender"];
+    objective?: Pet["objective"];
     region?: string;
     isDonation?: boolean;
     ownerId?: string;
@@ -111,7 +110,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(pets).where(eq(pets.id, id));
   }
 
-  async createLike(likerPetId: number, targetPetId: number): Promise<{ like: Like; isMatch: boolean; match?: Match }> {
+  async createLike(likerPetId: number, targetPetId: number): Promise<{ like: { id: number; likerPetId: number; targetPetId: number; createdAt: Date | null }; isMatch: boolean; match?: Match }> {
     // 1. Create Like
     const [like] = await db.insert(likes).values({ likerPetId, targetPetId }).returning();
 

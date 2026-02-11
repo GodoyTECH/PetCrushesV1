@@ -1,5 +1,13 @@
 # Plano de execução (incremental e sem quebra)
 
+
+## Status da execução
+
+### ETAPA 1 — Estabilização de baseline (concluída)
+- Corrigidos erros de TypeScript que bloqueavam o `npm run check`.
+- Build de produção validado após correções.
+- Nenhuma migração para Prisma nesta etapa (mantido Drizzle para reduzir risco).
+
 ## Princípios
 - Mudanças mínimas por etapa.
 - Cada etapa com validação de build/execução.

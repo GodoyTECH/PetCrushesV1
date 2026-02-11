@@ -29,3 +29,9 @@ npm run dev
 npm run build
 npm run check
 ```
+
+
+## Status técnico atual
+- `npm run check`: ✅
+- `npm run build`: ✅
+- ORM atual: Drizzle (Prisma adiado para etapa futura, após estabilidade)
