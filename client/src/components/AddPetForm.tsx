@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { useCreatePet, useUpload } from "@/hooks/use-pets"; // Note: we'll create the hook, but let's assume it's there
+import { useCreatePet } from "@/hooks/use-pets";
 import { useLanguage } from "@/lib/i18n";
 import { Loader2, Upload, AlertTriangle } from "lucide-react";
 import { BLOCKED_KEYWORDS } from "@shared/schema";
@@ -187,8 +187,8 @@ export function AddPetForm({ onSuccess }: { onSuccess: () => void }) {
               <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                 <FormControl>
                   <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
+                    checked={field.value ?? false}
+                    onCheckedChange={(checked) => field.onChange(checked === true)}
                   />
                 </FormControl>
                 <div className="space-y-1 leading-none">

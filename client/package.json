@@ -1,0 +1,7 @@
+{
+  "name": "petcrushes-frontend",
+  "private": true,
+  "scripts": {
+    "build": "npm --prefix .. run build:client"
+  }
+}

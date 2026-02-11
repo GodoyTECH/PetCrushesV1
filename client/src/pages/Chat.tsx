@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, MoreVertical, ShieldAlert } from "lucide-react";
+import { Send, MoreVertical, ShieldAlert, MessageCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLOCKED_KEYWORDS } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -111,10 +111,10 @@ export default function Chat() {
                     </div>
                     
                     {activeMatch.messages?.map(msg => (
-                        <div key={msg.id} className={cn("flex", msg.senderId === Number(user?.id) ? "justify-end" : "justify-start")}>
+                        <div key={msg.id} className={cn("flex", msg.senderId === user?.id ? "justify-end" : "justify-start")}>
                             <div className={cn(
                                 "max-w-[80%] px-4 py-2 rounded-2xl text-sm shadow-sm",
-                                msg.senderId === Number(user?.id) 
+                                msg.senderId === user?.id 
                                     ? "bg-primary text-primary-foreground rounded-br-none" 
                                     : "bg-white text-foreground rounded-bl-none"
                             )}>

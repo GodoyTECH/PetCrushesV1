@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl, type CreatePetRequest, type UpdatePetRequest } from "@shared/routes";
+import { apiFetch } from "@/lib/api";
 
 // GET /api/pets
 export function usePets(filters?: {
@@ -22,7 +23,7 @@ export function usePets(filters?: {
         url += `?${params.toString()}`;
       }
       
-      const res = await fetch(url, { credentials: "include" });
+      const res = await apiFetch(url);
       if (!res.ok) throw new Error('Failed to fetch pets');
       return api.pets.list.responses[200].parse(await res.json());
     },
@@ -35,7 +36,7 @@ export function usePet(id: number) {
     queryKey: [api.pets.get.path, id],
     queryFn: async () => {
       const url = buildUrl(api.pets.get.path, { id });
-      const res = await fetch(url, { credentials: "include" });
+      const res = await apiFetch(url);
       if (res.status === 404) return null;
       if (!res.ok) throw new Error('Failed to fetch pet');
       return api.pets.get.responses[200].parse(await res.json());
@@ -48,11 +49,10 @@ export function useCreatePet() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: CreatePetRequest) => {
-      const res = await fetch(api.pets.create.path, {
+      const res = await apiFetch(api.pets.create.path, {
         method: api.pets.create.method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-        credentials: "include",
       });
       
       if (!res.ok) {
@@ -71,11 +71,10 @@ export function useUpdatePet() {
   return useMutation({
     mutationFn: async ({ id, ...updates }: { id: number } & UpdatePetRequest) => {
       const url = buildUrl(api.pets.update.path, { id });
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method: api.pets.update.method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
-        credentials: "include",
       });
       
       if (!res.ok) throw new Error('Failed to update pet');
@@ -91,7 +90,7 @@ export function useDeletePet() {
   return useMutation({
     mutationFn: async (id: number) => {
       const url = buildUrl(api.pets.delete.path, { id });
-      const res = await fetch(url, { method: api.pets.delete.method, credentials: "include" });
+      const res = await apiFetch(url, { method: api.pets.delete.method });
       if (!res.ok) throw new Error('Failed to delete pet');
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [api.pets.list.path] }),
