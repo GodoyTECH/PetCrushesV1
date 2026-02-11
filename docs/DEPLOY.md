@@ -98,15 +98,34 @@ Recomendação operacional:
 - Evitar rodar push automaticamente a cada boot da API.
 
 ---
+=======
+- Build command: `npm run build`
+- Publish directory: `dist/public`
+- Variáveis necessárias: endpoints públicos da API
+
+## Backend/API — Render
+- Start command: `npm run start`
+- Build command: `npm run build`
+- Health endpoint: sugerido `GET /api/health` (a implementar)
+- Variáveis: `DATABASE_URL`, `SESSION_SECRET`, `PORT`, integrações de auth/upload
+
+## Banco — Neon (Postgres)
+- Usar `DATABASE_URL` com `sslmode=require`.
+- Aplicar migrations em pipeline controlada.
+
 
 ## Mídia — Cloudinary
 - Upload server-side.
 - Evitar credenciais no frontend.
 
-## Checklist rápido pós-deploy
+
 1. `GET /api/health` retorna `{ ok: true, name: "petcrushesv2-api" }`.
 2. Frontend Netlify consegue consumir API Render com `VITE_API_URL`.
 3. Login/fluxo de sessão responde sem erro de cookie/CORS em HTTPS.
 
 ## Observação
 Sem Prisma nesta etapa. A base permanece em Drizzle + Postgres para reduzir risco durante estabilização de deploy.
+=======
+## Observação
+Este arquivo define o alvo de produção. A implementação detalhada será feita nas próximas etapas para manter mudanças pequenas e seguras.
+
