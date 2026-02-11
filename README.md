@@ -35,3 +35,10 @@ npm run check
 - `npm run check`: ✅
 - `npm run build`: ✅
 - ORM atual: Drizzle (Prisma adiado para etapa futura, após estabilidade)
+
+
+## Modo acoplado vs modo separado
+- **Acoplado (padrão):** `SERVE_CLIENT=true` e sem `VITE_API_URL` no frontend.
+- **Separado:** `SERVE_CLIENT=false` na API e `VITE_API_URL=https://sua-api` no frontend.
+- CORS no backend via `CORS_ORIGIN` (múltiplas origens separadas por vírgula).
+- Healthcheck disponível em `GET /api/health`.

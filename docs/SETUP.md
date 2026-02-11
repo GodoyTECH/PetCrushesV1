@@ -49,3 +49,11 @@
 - Build de produção OK.
 - Typecheck OK (quando aplicável).
 - Documentação atualizada.
+
+
+### ETAPA 2 — Separação controlada (concluída)
+- Frontend preparado para usar `VITE_API_URL` mantendo fallback para `/api` no modo acoplado.
+- Backend preparado para modo standalone com `SERVE_CLIENT=false`.
+- CORS configurável por `CORS_ORIGIN` com suporte a múltiplas origens.
+- Sessão/cookies ajustadas para acoplado (`lax`) e separado em produção (`none` + `secure`).
+- Endpoint de healthcheck adicionado: `GET /api/health`.

@@ -13,6 +13,10 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  app.get("/api/health", (_req, res) => {
+    res.json({ ok: true, name: "petcrushesv2-api" });
+  });
+
   // Setup Replit Auth first
   await setupAuth(app);
   registerAuthRoutes(app);
