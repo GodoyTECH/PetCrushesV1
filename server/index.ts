@@ -23,6 +23,8 @@ function parseCorsOrigins() {
       "http://localhost:3000",
       "http://127.0.0.1:3000",
     );
+  } else {
+    configured.push("https://petcrushes.netlify.app");
   }
 
   return Array.from(new Set(configured));
@@ -30,14 +32,23 @@ function parseCorsOrigins() {
 
 function setupCors(app: express.Express) {
   const allowedOrigins = parseCorsOrigins();
+  const allowCredentials = true;
+
+  log(
+    `[cors] configured origins: ${allowedOrigins.length ? allowedOrigins.join(", ") : "<none>"}`,
+  );
+  log(`[cors] credentials enabled: ${allowCredentials}`);
 
   app.use((req, res, next) => {
     const origin = req.headers.origin;
+    const isAllowedOrigin = !!origin && allowedOrigins.includes(origin);
 
-    if (origin && allowedOrigins.includes(origin)) {
+    if (isAllowedOrigin) {
       res.header("Access-Control-Allow-Origin", origin);
       res.header("Vary", "Origin");
-      res.header("Access-Control-Allow-Credentials", "true");
+      if (allowCredentials) {
+        res.header("Access-Control-Allow-Credentials", "true");
+      }
       res.header(
         "Access-Control-Allow-Headers",
         "Content-Type, Authorization, X-Requested-With",
@@ -49,6 +60,9 @@ function setupCors(app: express.Express) {
     }
 
     if (req.method === "OPTIONS") {
+      if (!origin || !isAllowedOrigin) {
+        return res.status(403).json({ message: "CORS origin not allowed" });
+      }
       return res.sendStatus(204);
     }
 

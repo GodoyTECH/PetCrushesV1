@@ -7,7 +7,9 @@
 - Redirect SPA: `/* -> /index.html` (200)
 
 ### Variáveis (Netlify)
-- `VITE_API_URL=https://<servico-render>.onrender.com`
+
+- `VITE_API_URL=https://petcrushesv1.onrender.com`
+
 
 ## Backend/API — Render
 - Build command: `npm run build`
@@ -18,7 +20,9 @@
 - `NODE_ENV=production`
 - `SERVE_CLIENT=false`
 - `DATABASE_URL=<neon>`
-- `CORS_ORIGIN=https://<site-netlify>`
+
+- `CORS_ORIGIN=https://petcrushes.netlify.app`
+
 - `JWT_SECRET=<segredo-forte>`
 - `OTP_TTL_MINUTES=10` (opcional)
 - `CLOUDINARY_CLOUD_NAME=<cloud>`
