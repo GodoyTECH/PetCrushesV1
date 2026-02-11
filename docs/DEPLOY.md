@@ -24,10 +24,18 @@
 - `CORS_ORIGIN=https://petcrushes.netlify.app`
 
 - `JWT_SECRET=<segredo-forte>`
+- `OTP_SECRET=<segredo-forte-otp>` (recomendado, diferente de JWT_SECRET)
 - `OTP_TTL_MINUTES=10` (opcional)
+- `RESEND_API_KEY=<chave_resend>` (opcional, recomendado)
+- `EMAIL_FROM="PetCrushes <no-reply@seu-dominio.com>"` (opcional)
 - `CLOUDINARY_CLOUD_NAME=<cloud>`
 - `CLOUDINARY_API_KEY=<key>`
 - `CLOUDINARY_API_SECRET=<secret>`
+
+### OTP fallback (sem provedor de e-mail)
+- Se `RESEND_API_KEY` não estiver configurada, o endpoint de OTP continua funcionando.
+- O código será registrado nos logs do backend em:
+  - `[OTP][DEV-FALLBACK] email=<...> code=<...> expiresAt=<...>`
 
 ## Banco — Neon
 1. Criar projeto no Neon.

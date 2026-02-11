@@ -5,6 +5,11 @@ import { apiFetch, setAuthToken } from "@/lib/api";
 const AUTH_ME_KEY = ["/api/auth/me"];
 
 type VerifyOtpResult = { token: string; user: User };
+type RequestOtpResult = {
+  ok: boolean;
+  expiresAt: string;
+  delivery: { delivered: boolean; provider: "resend" | "dev-console" };
+};
 
 async function fetchUser(): Promise<User | null> {
   const response = await apiFetch("/api/auth/me");
@@ -13,14 +18,19 @@ async function fetchUser(): Promise<User | null> {
   return response.json();
 }
 
-async function requestOtp(email: string) {
+async function requestOtp(email: string): Promise<RequestOtpResult> {
   const response = await apiFetch("/api/auth/request-otp", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
   });
 
-  if (!response.ok) throw new Error("Não foi possível enviar o código.");
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.message ?? "Não foi possível enviar o código.");
+  }
+
+  return response.json();
 }
 
 async function verifyOtp(email: string, code: string): Promise<VerifyOtpResult> {
