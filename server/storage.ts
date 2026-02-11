@@ -10,7 +10,8 @@ import { eq, or, and, desc } from "drizzle-orm";
 export interface IStorage {
   // Users
   getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>; // Replit ID
+  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: UpsertUser): Promise<User>;
   updateUser(id: string, user: Partial<UpsertUser>): Promise<User>;
 
@@ -49,14 +50,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    // Note: Replit Auth doesn't have a 'username' column in the default blueprint users table
-    // It has email, firstName, lastName, etc.
-    // If you need username lookup, ensure your blueprint/schema supports it or map to email/id.
-    // Assuming 'email' or 'id' for now based on the provided blueprint.
-    // If you extended the table with 'username', fine.
-    // The previous schema I generated had 'username', but the blueprint overwrote it likely.
-    // I see in shared/models/auth.ts I added 'username'.
     const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
   }
 

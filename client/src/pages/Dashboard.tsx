@@ -21,7 +21,7 @@ export default function Dashboard() {
   // Since we used /api/pets, let's pretend we filter by user.id on client for this MVP if API doesn't support 'mine' yet.
   const myPets = pets?.filter((p) => p.ownerId === user?.id) || []; 
   // NOTE: user.id from Replit Auth is a string (uuid), but our schema uses Int for ownerId. 
-  // There is a schema mismatch in the provided prompt vs replit auth.
+  // Compatibilidade de campos entre schema e payload do formulário.
   // Replit Auth uses string IDs. Schema uses integer references.
   // FIX: We will just render ALL pets for now to demonstrate UI, or assume the backend handles the ID mapping.
 
