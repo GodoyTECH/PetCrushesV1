@@ -104,9 +104,11 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Pet = typeof pets.$inferSelect;
 export type InsertPet = z.infer<typeof insertPetSchema>;
 
+export type Like = typeof likes.$inferSelect;
 export type Match = typeof matches.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type Report = typeof reports.$inferSelect;
 
 // API Requests
 export type CreatePetRequest = InsertPet;

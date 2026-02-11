@@ -27,6 +27,10 @@ export function getSession() {
     ttl: sessionTtl,
     tableName: "sessions",
   });
+
+  const isProduction = process.env.NODE_ENV === "production";
+  const separateMode = process.env.SERVE_CLIENT === "false";
+
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
@@ -34,7 +38,8 @@ export function getSession() {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: isProduction,
+      sameSite: isProduction && separateMode ? "none" : "lax",
       maxAge: sessionTtl,
     },
   });
@@ -61,7 +66,6 @@ async function upsertUser(claims: any) {
 }
 
 export async function setupAuth(app: Express) {
-  app.set("trust proxy", 1);
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
