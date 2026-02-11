@@ -13,6 +13,7 @@ export default function AuthPage() {
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"email" | "code">("email");
   const [error, setError] = useState<string | null>(null);
+  const [deliveryInfo, setDeliveryInfo] = useState<string | null>(null);
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
   if (user) return <Redirect to="/app" />;
@@ -20,7 +21,12 @@ export default function AuthPage() {
   async function onRequestOtp() {
     setError(null);
     try {
-      await requestOtp(email);
+      const result = await requestOtp(email);
+      setDeliveryInfo(
+        result.delivery.provider === "dev-console"
+          ? "Código enviado via dev-console. Veja o log do servidor (Render Logs)."
+          : "Código enviado por e-mail.",
+      );
       setStep("code");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao enviar código");
@@ -52,6 +58,7 @@ export default function AuthPage() {
           {step === "code" && <Input inputMode="numeric" maxLength={6} placeholder="123456" value={code} onChange={(e) => setCode(e.target.value)} />}
 
           {error && <p className="text-sm text-destructive">{error}</p>}
+          {deliveryInfo && <p className="text-sm text-muted-foreground">{deliveryInfo}</p>}
 
           {step === "email" ? (
             <Button className="w-full h-12 text-lg" onClick={onRequestOtp} disabled={isRequestingOtp}>

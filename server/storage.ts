@@ -1,11 +1,11 @@
 import { db } from "./db";
 import {
-  pets, likes, matches, messages, reports,
+  pets, likes, matches, messages, reports, otpCodes,
   type Pet, type InsertPet,
-  type Match, type Message, type InsertMessage, type Report
+  type Match, type Message, type InsertMessage, type Report, type OtpCode
 } from "@shared/schema";
 import { users, type User, type UpsertUser } from "@shared/models/auth";
-import { eq, or, and, desc } from "drizzle-orm";
+import { eq, or, and, desc, isNull, gte, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -41,6 +41,14 @@ export interface IStorage {
 
   // Reports
   createReport(report: { reporterId: string; targetPetId: number; reason: string }): Promise<Report>;
+
+  // OTP
+  invalidatePendingOtpsByEmail(email: string): Promise<void>;
+  createOtpCode(data: { email: string; codeHash: string; expiresAt: Date }): Promise<OtpCode>;
+  getLatestPendingOtpByEmail(email: string): Promise<OtpCode | undefined>;
+  incrementOtpAttempts(id: string): Promise<OtpCode | undefined>;
+  markOtpAsUsed(id: string): Promise<void>;
+  countRecentOtpRequests(email: string, from: Date): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -110,6 +118,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createLike(likerPetId: number, targetPetId: number): Promise<{ like: { id: number; likerPetId: number; targetPetId: number; createdAt: Date | null }; isMatch: boolean; match?: Match }> {
+    const [existingLike] = await db.select().from(likes).where(and(
+      eq(likes.likerPetId, likerPetId),
+      eq(likes.targetPetId, targetPetId),
+    ));
+
+    if (existingLike) {
+      const [existingMatch] = await db.select().from(matches).where(or(
+        and(eq(matches.petAId, likerPetId), eq(matches.petBId, targetPetId)),
+        and(eq(matches.petAId, targetPetId), eq(matches.petBId, likerPetId)),
+      ));
+      return { like: existingLike, isMatch: !!existingMatch, match: existingMatch };
+    }
+
     // 1. Create Like
     const [like] = await db.insert(likes).values({ likerPetId, targetPetId }).returning();
 
@@ -155,6 +176,43 @@ export class DatabaseStorage implements IStorage {
   async createReport(report: { reporterId: string; targetPetId: number; reason: string }): Promise<Report> {
     const [newReport] = await db.insert(reports).values(report).returning();
     return newReport;
+  }
+
+  async invalidatePendingOtpsByEmail(email: string): Promise<void> {
+    await db.update(otpCodes)
+      .set({ usedAt: new Date() })
+      .where(and(eq(otpCodes.email, email), isNull(otpCodes.usedAt)));
+  }
+
+  async createOtpCode(data: { email: string; codeHash: string; expiresAt: Date }): Promise<OtpCode> {
+    const [otp] = await db.insert(otpCodes).values(data).returning();
+    return otp;
+  }
+
+  async getLatestPendingOtpByEmail(email: string): Promise<OtpCode | undefined> {
+    const [otp] = await db.select().from(otpCodes)
+      .where(and(eq(otpCodes.email, email), isNull(otpCodes.usedAt)))
+      .orderBy(desc(otpCodes.createdAt));
+    return otp;
+  }
+
+  async incrementOtpAttempts(id: string): Promise<OtpCode | undefined> {
+    const [otp] = await db.update(otpCodes)
+      .set({ attempts: sql`${otpCodes.attempts} + 1` })
+      .where(eq(otpCodes.id, id))
+      .returning();
+    return otp;
+  }
+
+  async markOtpAsUsed(id: string): Promise<void> {
+    await db.update(otpCodes).set({ usedAt: new Date() }).where(eq(otpCodes.id, id));
+  }
+
+  async countRecentOtpRequests(email: string, from: Date): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)::int` })
+      .from(otpCodes)
+      .where(and(eq(otpCodes.email, email), gte(otpCodes.createdAt, from)));
+    return result[0]?.count ?? 0;
   }
 }
 

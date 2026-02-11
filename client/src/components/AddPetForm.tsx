@@ -13,16 +13,29 @@ import { Loader2, Upload, AlertTriangle } from "lucide-react";
 import { BLOCKED_KEYWORDS } from "@shared/schema";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { insertPetSchema } from "@shared/schema";
+import type { CreatePetRequest } from "@shared/routes";
 import { apiFetch } from "@/lib/api";
 
-const formSchema = insertPetSchema.extend({
-  photos: z.array(z.string()).min(3, "Mínimo de 3 fotos"),
-  videoUrl: z.string().url("Vídeo obrigatório"),
+const formSchema = z.object({
+  displayName: z.string().min(1),
+  species: z.string().min(1),
+  breed: z.string().min(1),
+  gender: z.enum(["MALE", "FEMALE"]),
+  size: z.enum(["SMALL", "MEDIUM", "LARGE"]).nullable().optional(),
+  colors: z.array(z.string()),
   ageMonths: z.coerce.number().min(0),
-  about: z.string().refine((val) => !BLOCKED_KEYWORDS.some((keyword) => val.toLowerCase().includes(keyword)), {
+  pedigree: z.boolean(),
+  vaccinated: z.boolean().optional(),
+  neutered: z.boolean().optional(),
+  healthNotes: z.string().nullable().optional(),
+  objective: z.enum(["BREEDING", "COMPANIONSHIP", "SOCIALIZATION"]),
+  isDonation: z.boolean().optional(),
+  region: z.string().min(1),
+  about: z.string().min(1).refine((val) => !BLOCKED_KEYWORDS.some((keyword) => val.toLowerCase().includes(keyword)), {
     message: "Sales content detected. This platform is for mating and adoption only.",
   }),
+  photos: z.array(z.string()).min(3, "Mínimo de 3 fotos"),
+  videoUrl: z.string().url("Vídeo obrigatório"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -94,7 +107,7 @@ export function AddPetForm({ onSuccess }: { onSuccess: () => void }) {
   async function onSubmit(data: FormValues) {
     setIsSubmitting(true);
     try {
-      await createPet.mutateAsync(data);
+      await createPet.mutateAsync(data as CreatePetRequest);
       toast({ title: "Success!", description: "Pet registered successfully." });
       onSuccess();
     } catch (error: any) {

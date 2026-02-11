@@ -59,8 +59,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const parsed = OTP_REQUEST_SCHEMA.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: "Invalid email" });
 
-    await requestOtp(parsed.data.email);
-    return res.json({ ok: true });
+    const result = await requestOtp(parsed.data.email, req.ip);
+    if ("error" in result) {
+      const status = result.status ?? 400;
+      return res.status(status).json({ message: result.error });
+    }
+    return res.json(result);
   });
 
   app.post("/api/auth/verify-otp", async (req, res) => {
@@ -69,7 +73,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
     const result = await verifyOtp(parsed.data.email, parsed.data.code);
     if ("error" in result) {
-      return res.status(400).json({ message: result.error });
+      const status = result.status ?? 400;
+      return res.status(status).json({ message: result.error });
     }
 
     return res.json(result);
@@ -116,7 +121,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.put(api.pets.update.path, requireAuth, async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
     try {
+      const pet = await storage.getPet(Number(req.params.id));
+      if (!pet) return res.status(404).json({ message: "Pet not found" });
+      if (pet.ownerId !== user.id) return res.status(403).json({ error: "FORBIDDEN" });
+
       const input = api.pets.update.input.parse(req.body);
       if (input.about && contentFilter(input.about)) return res.status(400).json({ message: "Sales content blocked" });
       const updated = await storage.updatePet(Number(req.params.id), input);
@@ -127,13 +139,31 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.delete(api.pets.delete.path, requireAuth, async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const pet = await storage.getPet(Number(req.params.id));
+    if (!pet) return res.status(404).json({ message: "Pet not found" });
+    if (pet.ownerId !== user.id) return res.status(403).json({ error: "FORBIDDEN" });
+
     await storage.deletePet(Number(req.params.id));
     res.status(204).end();
   });
 
   app.post(api.likes.create.path, requireAuth, async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
     try {
-      const { likerPetId, targetPetId } = req.body;
+      const { likerPetId, targetPetId } = api.likes.create.input.parse(req.body);
+      if (likerPetId === targetPetId) return res.status(400).json({ message: "Cannot like your own pet" });
+
+      const likerPet = await storage.getPet(Number(likerPetId));
+      const targetPet = await storage.getPet(Number(targetPetId));
+      if (!likerPet || !targetPet) return res.status(404).json({ message: "Pet not found" });
+      if (likerPet.ownerId !== user.id) return res.status(403).json({ error: "FORBIDDEN" });
+      if (targetPet.ownerId === user.id) return res.status(400).json({ message: "Cannot like your own pet" });
+
       const result = await storage.createLike(likerPetId, targetPetId);
       res.json({ matched: result.isMatch, matchId: result.match?.id });
     } catch {
@@ -159,10 +189,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.get(api.matches.get.path, requireAuth, async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
     const match = await storage.getMatch(Number(req.params.id));
     if (!match) return res.status(404).json({ message: "Match not found" });
     const petA = await storage.getPet(match.petAId);
     const petB = await storage.getPet(match.petBId);
+    if (!petA || !petB) return res.status(404).json({ message: "Match pets not found" });
+    if (petA.ownerId !== user.id && petB.ownerId !== user.id) return res.status(403).json({ error: "FORBIDDEN" });
+
     const messages = await storage.getMessages(match.id);
     res.json({ ...match, petA, petB, messages });
   });
@@ -174,6 +210,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       const { content } = req.body;
       if (contentFilter(content)) return res.status(400).json({ message: "Sales content blocked" });
+
+      const match = await storage.getMatch(Number(req.params.id));
+      if (!match) return res.status(404).json({ message: "Match not found" });
+      const petA = await storage.getPet(match.petAId);
+      const petB = await storage.getPet(match.petBId);
+      if (!petA || !petB) return res.status(404).json({ message: "Match pets not found" });
+      if (petA.ownerId !== user.id && petB.ownerId !== user.id) return res.status(403).json({ error: "FORBIDDEN" });
 
       const message = await storage.createMessage({ matchId: Number(req.params.id), senderId: user.id, content });
       res.status(201).json(message);

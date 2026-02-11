@@ -28,7 +28,17 @@ export const api = {
       method: 'POST' as const,
       path: '/api/auth/request-otp' as const,
       input: z.object({ email: z.string().email() }),
-      responses: { 200: z.object({ ok: z.boolean() }), 400: errorSchemas.validation },
+      responses: {
+        200: z.object({
+          ok: z.boolean(),
+          expiresAt: z.string(),
+          delivery: z.object({
+            delivered: z.boolean(),
+            provider: z.enum(["resend", "dev-console"]),
+          }),
+        }),
+        400: errorSchemas.validation,
+      },
     },
     verifyOtp: {
       method: 'POST' as const,
@@ -82,7 +92,7 @@ export const api = {
     create: {
       method: 'POST' as const,
       path: '/api/pets' as const,
-      input: insertPetSchema,
+      input: insertPetSchema.omit({ ownerId: true }),
       responses: {
         201: z.custom<typeof pets.$inferSelect>(),
         400: errorSchemas.validation,
@@ -91,7 +101,7 @@ export const api = {
     update: {
       method: 'PUT' as const,
       path: '/api/pets/:id' as const,
-      input: insertPetSchema.partial(),
+      input: insertPetSchema.omit({ ownerId: true }).partial(),
       responses: {
         200: z.custom<typeof pets.$inferSelect>(),
         400: errorSchemas.validation,
