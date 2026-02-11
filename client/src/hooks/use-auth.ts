@@ -1,46 +1,69 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { User } from "@shared/models/auth";
-import { apiFetch, apiUrl } from "@/lib/api";
+import { apiFetch, setAuthToken } from "@/lib/api";
+
+const AUTH_ME_KEY = ["/api/auth/me"];
+
+type VerifyOtpResult = { token: string; user: User };
 
 async function fetchUser(): Promise<User | null> {
-  const response = await apiFetch("/api/auth/user");
+  const response = await apiFetch("/api/auth/me");
+  if (response.status === 401) return null;
+  if (!response.ok) throw new Error(`${response.status}: ${response.statusText}`);
+  return response.json();
+}
 
-  if (response.status === 401) {
-    return null;
-  }
+async function requestOtp(email: string) {
+  const response = await apiFetch("/api/auth/request-otp", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!response.ok) throw new Error("Não foi possível enviar o código.");
+}
+
+async function verifyOtp(email: string, code: string): Promise<VerifyOtpResult> {
+  const response = await apiFetch("/api/auth/verify-otp", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, code }),
+  });
 
   if (!response.ok) {
-    throw new Error(`${response.status}: ${response.statusText}`);
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.message ?? "Código inválido");
   }
 
   return response.json();
 }
 
-async function logout(): Promise<void> {
-  window.location.href = apiUrl("/api/logout");
-}
-
 export function useAuth() {
   const queryClient = useQueryClient();
-  const { data: user, isLoading } = useQuery<User | null>({
-    queryKey: ["/api/auth/user"],
-    queryFn: fetchUser,
-    retry: false,
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  });
+  const query = useQuery({ queryKey: AUTH_ME_KEY, queryFn: fetchUser, retry: false });
 
-  const logoutMutation = useMutation({
-    mutationFn: logout,
-    onSuccess: () => {
-      queryClient.setQueryData(["/api/auth/user"], null);
+  const requestOtpMutation = useMutation({ mutationFn: requestOtp });
+  const verifyOtpMutation = useMutation({
+    mutationFn: ({ email, code }: { email: string; code: string }) => verifyOtp(email, code),
+    onSuccess: ({ token, user }) => {
+      setAuthToken(token);
+      queryClient.setQueryData(AUTH_ME_KEY, user);
     },
   });
 
+  const logout = () => {
+    setAuthToken(null);
+    queryClient.setQueryData(AUTH_ME_KEY, null);
+  };
+
   return {
-    user,
-    isLoading,
-    isAuthenticated: !!user,
-    logout: logoutMutation.mutate,
-    isLoggingOut: logoutMutation.isPending,
+    user: query.data,
+    isLoading: query.isLoading,
+    isAuthenticated: !!query.data,
+    requestOtp: requestOtpMutation.mutateAsync,
+    verifyOtp: verifyOtpMutation.mutateAsync,
+    isRequestingOtp: requestOtpMutation.isPending,
+    isVerifyingOtp: verifyOtpMutation.isPending,
+    logout,
   };
 }
