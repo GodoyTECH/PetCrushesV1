@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
+import { apiUrl } from "@/lib/api";
 
 export default function AuthPage() {
   const { t } = useLanguage();
@@ -43,7 +44,7 @@ export default function AuthPage() {
         <CardContent className="flex flex-col gap-4">
           <Button 
             className="w-full h-12 text-lg" 
-            onClick={() => window.location.href = "/api/login"}
+            onClick={() => window.location.href = apiUrl("/api/login")}
           >
             Log in with Replit
           </Button>

@@ -177,3 +177,9 @@ export function buildUrl(path: string, params?: Record<string, string | number>)
   }
   return url;
 }
+
+
+export type CreatePetRequest = z.infer<typeof api.pets.create.input>;
+export type UpdatePetRequest = z.infer<typeof api.pets.update.input>;
+export type CreateLikeRequest = z.infer<typeof api.likes.create.input>;
+export type CreateReportRequest = z.infer<typeof api.reports.create.input>;

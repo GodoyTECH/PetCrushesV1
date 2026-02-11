@@ -1,16 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl, type CreateLikeRequest, type CreateReportRequest } from "@shared/routes";
+import { apiFetch } from "@/lib/api";
 
 // POST /api/likes
 export function useLikePet() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (data: CreateLikeRequest) => {
-      const res = await fetch(api.likes.create.path, {
+      const res = await apiFetch(api.likes.create.path, {
         method: api.likes.create.method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-        credentials: "include",
       });
       
       if (!res.ok) throw new Error('Failed to like pet');
@@ -27,7 +27,7 @@ export function useMatches() {
   return useQuery({
     queryKey: [api.matches.list.path],
     queryFn: async () => {
-      const res = await fetch(api.matches.list.path, { credentials: "include" });
+      const res = await apiFetch(api.matches.list.path);
       if (!res.ok) throw new Error('Failed to fetch matches');
       return api.matches.list.responses[200].parse(await res.json());
     },
@@ -40,7 +40,7 @@ export function useMatch(id: number) {
     queryKey: [api.matches.get.path, id],
     queryFn: async () => {
       const url = buildUrl(api.matches.get.path, { id });
-      const res = await fetch(url, { credentials: "include" });
+      const res = await apiFetch(url);
       if (res.status === 404) return null;
       if (!res.ok) throw new Error('Failed to fetch match details');
       return api.matches.get.responses[200].parse(await res.json());
@@ -52,11 +52,10 @@ export function useMatch(id: number) {
 export function useReportPet() {
   return useMutation({
     mutationFn: async (data: CreateReportRequest) => {
-      const res = await fetch(api.reports.create.path, {
+      const res = await apiFetch(api.reports.create.path, {
         method: api.reports.create.method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
-        credentials: "include",
       });
       if (!res.ok) throw new Error('Failed to report pet');
       return api.reports.create.responses[201].parse(await res.json());
@@ -70,11 +69,10 @@ export function useSendMessage() {
   return useMutation({
     mutationFn: async ({ matchId, content }: { matchId: number; content: string }) => {
       const url = buildUrl(api.messages.create.path, { id: matchId });
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method: api.messages.create.method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content }),
-        credentials: "include",
       });
       if (!res.ok) throw new Error('Failed to send message');
       return api.messages.create.responses[201].parse(await res.json());

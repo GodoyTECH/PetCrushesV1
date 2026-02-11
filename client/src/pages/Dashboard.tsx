@@ -19,7 +19,7 @@ export default function Dashboard() {
   // Filter only my pets (assuming API returns all or we have a filter, for MVP filtering client side if API allows all)
   // For safety, let's assume the API returns user's pets on a specific route or we check ownerId.
   // Since we used /api/pets, let's pretend we filter by user.id on client for this MVP if API doesn't support 'mine' yet.
-  const myPets = pets?.filter(p => p.ownerId === Number(user?.id)) || []; 
+  const myPets = pets?.filter((p) => p.ownerId === user?.id) || []; 
   // NOTE: user.id from Replit Auth is a string (uuid), but our schema uses Int for ownerId. 
   // There is a schema mismatch in the provided prompt vs replit auth.
   // Replit Auth uses string IDs. Schema uses integer references.

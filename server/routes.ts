@@ -13,6 +13,10 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  app.get("/api/health", (_req, res) => {
+    res.json({ ok: true, name: "petcrushesv2-api" });
+  });
+
   // Setup Replit Auth first
   await setupAuth(app);
   registerAuthRoutes(app);
@@ -181,8 +185,13 @@ export async function registerRoutes(
      res.json({ url: mockUrl });
   });
 
-  // Seed Database (Run once if empty)
-  await seedDatabase();
+  // Seed Database (dev helper)
+  const shouldSeedDatabase =
+    process.env.NODE_ENV !== "production" && process.env.SKIP_DB_SEED !== "true";
+
+  if (shouldSeedDatabase) {
+    await seedDatabase();
+  }
 
   return httpServer;
 }
@@ -199,7 +208,7 @@ async function seedDatabase() {
     email: "ana@example.com",
     displayName: "Ana Silva",
     region: "São Paulo, SP",
-    verified: true,
+    verified: "true",
     whatsapp: "11999999999"
   });
 
@@ -208,7 +217,7 @@ async function seedDatabase() {
     email: "carlos@example.com",
     displayName: "Carlos Souza",
     region: "Rio de Janeiro, RJ",
-    verified: true,
+    verified: "true",
   });
 
   // Create Pets
