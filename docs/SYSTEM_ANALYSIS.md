@@ -36,7 +36,7 @@ O projeto está funcional em partes, com build de produção operacional, mas ai
 **Impacto**: quebra de build/check e alto risco de regressão.
 
 ### P0.3 Auth acoplada ao Replit
-- Login/callback/logout dependem diretamente de OIDC da Replit e variáveis próprias (`REPL_ID`, `ISSUER_URL`).
+- Login agora usa OTP por e-mail + JWT stateless, sem dependência de provedor externo específico.
 - Backend depende de tabela `sessions` e estratégia dinâmica por host.
 
 **Impacto**: risco na migração para Render + Netlify se domínio/fluxo não for cuidadosamente adaptado.
@@ -73,7 +73,7 @@ O projeto está funcional em partes, com build de produção operacional, mas ai
 ### Frontend
 - Estrutura geral está organizada (páginas, hooks, UI components).
 - Problema central: contratos de tipo não estão alinhados 100% com shared.
-- Fluxo de auth depende de `/api/login` (Replit), ainda não desacoplado do provedor atual.
+- Fluxo de auth está definido em OTP + JWT stateless (`/api/auth/request-otp`, `/api/auth/verify-otp`, `/api/auth/me`).
 
 ### Backend/API
 - Rotas de domínio cobrem o núcleo do produto.
