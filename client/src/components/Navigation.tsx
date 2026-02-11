@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useLanguage } from "@/lib/i18n";
 import { useAuth } from "@/hooks/use-auth";
-import { Home, Heart, Gift, MessageCircle, User, LogOut, Car } from "lucide-react";
+import { Heart, Gift, MessageCircle, User, LogOut, Car, LogIn } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -59,14 +59,23 @@ export function Sidebar() {
               </div>
             </div>
           )}
-          <Button 
-            variant="outline" 
-            className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20"
-            onClick={() => logout()}
-          >
-            <LogOut size={16} />
-            {t.nav.logout}
-          </Button>
+          {user ? (
+            <Button 
+              variant="outline" 
+              className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20"
+              onClick={() => logout()}
+            >
+              <LogOut size={16} />
+              {t.nav.logout}
+            </Button>
+          ) : (
+            <Link href="/auth">
+              <Button variant="outline" className="w-full justify-start gap-2">
+                <LogIn size={16} />
+                Entrar
+              </Button>
+            </Link>
+          )}
         </div>
       </aside>
 

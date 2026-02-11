@@ -24,6 +24,18 @@ export { BLOCKED_KEYWORDS };
 
 export const api = {
   auth: {
+    requestOtp: {
+      method: 'POST' as const,
+      path: '/api/auth/request-otp' as const,
+      input: z.object({ email: z.string().email() }),
+      responses: { 200: z.object({ ok: z.boolean() }), 400: errorSchemas.validation },
+    },
+    verifyOtp: {
+      method: 'POST' as const,
+      path: '/api/auth/verify-otp' as const,
+      input: z.object({ email: z.string().email(), code: z.string().length(6) }),
+      responses: { 200: z.object({ token: z.string(), user: z.custom<typeof users.$inferSelect>() }), 400: errorSchemas.validation },
+    },
     me: {
       method: 'GET' as const,
       path: '/api/auth/me' as const,
@@ -156,7 +168,7 @@ export const api = {
   upload: {
     create: {
         method: 'POST' as const,
-        path: '/api/upload' as const,
+        path: '/api/media/upload' as const,
         // Multipart form data, not validated by Zod directly here
         responses: {
             200: z.object({ url: z.string() }),

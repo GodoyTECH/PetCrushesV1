@@ -64,4 +64,3 @@
 - Boot de produção com logs de serviço e ambiente (sem secrets).
 - Healthcheck `/api/health` validado com API em produção local simulada.
 - Documentação de setup Render + Neon + Drizzle detalhada em `docs/DEPLOY.md`.
-=======
