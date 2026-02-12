@@ -162,8 +162,52 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const pets = await storage.getPets({
       ...filters,
       isDonation: filters.isDonation === "true" ? true : filters.isDonation === "false" ? false : undefined,
+      limit: filters.limit ? Number(filters.limit) : undefined,
+      page: filters.page ? Number(filters.page) : undefined,
     });
     res.json(pets);
+  });
+
+  app.get("/api/pets/mine", requireAuth, async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const pets = await storage.getPets({ ownerId: user.id, limit: 50, page: 1 });
+    return res.json(pets);
+  });
+
+  app.get("/api/pets/mine/default", requireAuth, async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const pets = await storage.getPets({ ownerId: user.id, limit: 1, page: 1 });
+    return res.json(pets[0] ?? null);
+  });
+
+  app.get("/api/feed", requireAuth, async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json({ message: "Unauthorized" });
+
+    const query = req.query as any;
+    const page = Number(query.page || 1);
+    const limit = Number(query.limit || 10);
+    const items = await storage.getPets({
+      species: query.species,
+      gender: query.gender,
+      objective: query.objective,
+      region: query.region,
+      size: query.size,
+      excludeOwnerId: user.id,
+      page,
+      limit,
+    });
+
+    return res.json({
+      items,
+      page,
+      limit,
+      hasMore: items.length === Math.min(50, Math.max(1, limit)),
+    });
   });
 
   app.get(api.pets.get.path, async (req, res) => {
@@ -179,6 +223,12 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
     try {
       const input = api.pets.create.input.parse(req.body);
+      if (!input.photos || input.photos.length < 3) {
+        return res.status(400).json({ message: "Envie pelo menos 3 fotos do pet. / Please upload at least 3 photos." });
+      }
+      if (!input.videoUrl) {
+        return res.status(400).json({ message: "Adicione 1 vídeo para continuar. / Please add 1 video to continue." });
+      }
       if (contentFilter(input.about)) {
         return res.status(400).json({ message: "Sales content is not allowed.", field: "about" });
       }
@@ -325,6 +375,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     } catch (error) {
       console.error("[media-upload]", error);
       return res.status(503).json(authError("MEDIA_UPLOAD_UNAVAILABLE", "Não foi possível enviar a mídia agora. Tente novamente em instantes."));
+    }
+
+    if (resourceType === "video" && Number(uploaded.duration ?? 0) < 5) {
+      return res.status(400).json(authError("VIDEO_TOO_SHORT", "O vídeo precisa ter ao menos 5 segundos. / Video must be at least 5 seconds long."));
     }
 
     res.json({

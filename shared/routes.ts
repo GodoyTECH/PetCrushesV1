@@ -112,10 +112,30 @@ export const api = {
         objective: z.string().optional(),
         region: z.string().optional(),
         isDonation: z.coerce.boolean().optional(),
+        size: z.string().optional(),
+        limit: z.coerce.number().int().min(1).max(50).optional(),
+        page: z.coerce.number().int().min(1).optional(),
         cursor: z.string().optional(),
       }).optional(),
       responses: {
         200: z.array(z.custom<typeof pets.$inferSelect>()),
+      },
+    },
+
+    mine: {
+      method: 'GET' as const,
+      path: '/api/pets/mine' as const,
+      responses: {
+        200: z.array(z.custom<typeof pets.$inferSelect>()),
+        401: errorSchemas.forbidden,
+      },
+    },
+    mineDefault: {
+      method: 'GET' as const,
+      path: '/api/pets/mine/default' as const,
+      responses: {
+        200: z.custom<typeof pets.$inferSelect | null>(),
+        401: errorSchemas.forbidden,
       },
     },
     get: {
@@ -151,6 +171,30 @@ export const api = {
       responses: {
         204: z.void(),
         404: errorSchemas.notFound,
+      },
+    },
+  },
+
+  feed: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/feed' as const,
+      input: z.object({
+        species: z.string().optional(),
+        gender: z.string().optional(),
+        objective: z.string().optional(),
+        region: z.string().optional(),
+        size: z.string().optional(),
+        limit: z.coerce.number().int().min(1).max(50).optional(),
+        page: z.coerce.number().int().min(1).optional(),
+      }).optional(),
+      responses: {
+        200: z.object({
+          items: z.array(z.custom<typeof pets.$inferSelect>()),
+          page: z.number(),
+          limit: z.number(),
+          hasMore: z.boolean(),
+        }),
       },
     },
   },
