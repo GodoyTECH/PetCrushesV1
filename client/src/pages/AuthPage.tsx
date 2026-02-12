@@ -1,16 +1,36 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { Redirect } from "wouter";
+import { Redirect, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
+import { useLanguage, type AppTranslations } from "@/lib/i18n";
+
+type AuthMode = "signin" | "signup";
+
+function getHumanErrorMessage(codeOrMessage: string, t: AppTranslations) {
+  const code = codeOrMessage?.trim();
+  if (!code) return t.auth.errors.generic;
+
+  const byCode: Record<string, string> = {
+    INVALID_EMAIL: t.auth.errors.invalidEmail,
+    INVALID_PAYLOAD: t.auth.errors.invalidEmail,
+    OTP_REQUEST_FAILED: t.auth.errors.requestFailed,
+    OTP_INVALID_OR_EXPIRED: t.auth.errors.invalidCode,
+  };
+
+  return byCode[code] ?? codeOrMessage;
+}
 
 export default function AuthPage() {
-  const { user, isLoading, requestOtp, verifyOtp, isRequestingOtp, isVerifyingOtp } = useAuth();
+  const { t } = useLanguage();
+  const [, setLocation] = useLocation();
+  const { user, isLoading, checkAuthExists, requestOtp, verifyOtp, isCheckingExists, isRequestingOtp, isVerifyingOtp } = useAuth();
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
+  const [mode, setMode] = useState<AuthMode>("signin");
   const [step, setStep] = useState<"email" | "code">("email");
   const [error, setError] = useState<string | null>(null);
   const [deliveryInfo, setDeliveryInfo] = useState<string | null>(null);
@@ -18,29 +38,44 @@ export default function AuthPage() {
   if (isLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
   if (user) return <Redirect to="/app" />;
 
-  async function onRequestOtp() {
+  async function startOtpFlow() {
     setError(null);
+    setDeliveryInfo(null);
+
     try {
+      const existsResult = await checkAuthExists(email);
+      if (mode === "signin" && !existsResult.exists) {
+        setError(t.auth.errors.emailNotRegistered);
+        return;
+      }
+      if (mode === "signup" && existsResult.exists) {
+        setError(t.auth.errors.emailAlreadyRegistered);
+        return;
+      }
+
       const result = await requestOtp(email);
-      setDeliveryInfo(
-        result.delivery.provider === "dev-console"
-          ? "Código enviado via dev-console. Veja o log do servidor (Render Logs)."
-          : "Código enviado por e-mail.",
-      );
+      setDeliveryInfo(result.delivery.provider === "dev-console" ? t.auth.otpSentDev : t.auth.otpSent);
       setStep("code");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao enviar código");
+      setError(err instanceof Error ? getHumanErrorMessage(err.message, t) : t.auth.errors.requestFailed);
     }
   }
 
   async function onVerifyOtp() {
     setError(null);
     try {
-      await verifyOtp({ email, code });
+      const result = await verifyOtp({ email, code });
+      if (result.isNewUser) {
+        setLocation("/onboarding");
+        return;
+      }
+      setLocation("/app");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao validar código");
+      setError(err instanceof Error ? getHumanErrorMessage(err.message, t) : t.auth.errors.invalidCode);
     }
   }
+
+  const isBusy = isCheckingExists || isRequestingOtp || isVerifyingOtp;
 
   return (
     <div className="min-h-screen bg-secondary/30 flex items-center justify-center p-4">
@@ -49,29 +84,58 @@ export default function AuthPage() {
         <CardHeader className="text-center space-y-4 pb-8">
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center text-4xl">🐾</div>
           <div>
-            <CardTitle className="text-2xl font-display">Welcome to PetCrushes</CardTitle>
-            <CardDescription>{step === "email" ? "Digite seu e-mail para receber um código." : "Digite o código de 6 dígitos."}</CardDescription>
+            <CardTitle className="text-2xl font-display">{step === "email" ? t.auth.title : t.auth.codeStepTitle}</CardTitle>
+            <CardDescription>{step === "email" ? t.auth.subtitle : t.auth.codeStepSubtitle}</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
-          <Input type="email" placeholder="voce@email.com" value={email} onChange={(e) => setEmail(e.target.value)} disabled={step === "code"} />
-          {step === "code" && <Input inputMode="numeric" maxLength={6} placeholder="123456" value={code} onChange={(e) => setCode(e.target.value)} />}
+          {step === "email" && (
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant={mode === "signin" ? "default" : "outline"} onClick={() => setMode("signin")}>
+                {t.auth.signIn}
+              </Button>
+              <Button variant={mode === "signup" ? "default" : "outline"} onClick={() => setMode("signup")}>
+                {t.auth.signUp}
+              </Button>
+            </div>
+          )}
+
+          <Input type="email" placeholder={t.auth.emailPlaceholder} value={email} onChange={(e) => setEmail(e.target.value)} disabled={step === "code" || isBusy} />
+          {step === "code" && <Input inputMode="numeric" maxLength={6} placeholder={t.auth.codePlaceholder} value={code} onChange={(e) => setCode(e.target.value)} disabled={isBusy} />}
 
           {error && <p className="text-sm text-destructive">{error}</p>}
           {deliveryInfo && <p className="text-sm text-muted-foreground">{deliveryInfo}</p>}
 
           {step === "email" ? (
-            <Button className="w-full h-12 text-lg" onClick={onRequestOtp} disabled={isRequestingOtp}>
-              {isRequestingOtp ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Enviar código
+            <Button className="w-full h-12 text-lg" onClick={startOtpFlow} disabled={isBusy}>
+              {isBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {mode === "signin" ? t.auth.signIn : t.auth.signUp}
             </Button>
           ) : (
-            <Button className="w-full h-12 text-lg" onClick={onVerifyOtp} disabled={isVerifyingOtp}>
-              {isVerifyingOtp ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Entrar
-            </Button>
+            <>
+              <Button className="w-full h-12 text-lg" onClick={onVerifyOtp} disabled={isBusy}>
+                {isBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {t.auth.verifyCode}
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setStep("email");
+                  setCode("");
+                  setError(null);
+                }}
+              >
+                {t.auth.back}
+              </Button>
+            </>
           )}
-          <p className="text-xs text-center text-muted-foreground mt-2">By logging in, you agree to our strict no-sales policy.</p>
+
+          {step === "email" && (
+            <p className="text-xs text-center text-muted-foreground mt-2">
+              {mode === "signin" ? t.auth.createAccountHint : t.auth.signInHint}
+            </p>
+          )}
+          <p className="text-xs text-center text-muted-foreground">{t.auth.policiesNote}</p>
         </CardContent>
       </Card>
     </div>

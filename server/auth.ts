@@ -140,6 +140,7 @@ export async function verifyOtp(emailInput: string, code: string) {
   await storage.markOtpAsUsed(otp.id);
 
   let user = await storage.getUserByEmail(email);
+  const isNewUser = !user;
   if (!user) {
     user = await storage.createUser({
       email,
@@ -152,7 +153,11 @@ export async function verifyOtp(emailInput: string, code: string) {
   }
 
   const token = signToken(user.id);
-  return { token, user } as const;
+  return { token, user, isNewUser } as const;
+}
+
+export function normalizeAuthEmail(emailInput: string) {
+  return normalizeEmail(emailInput);
 }
 
 export async function getUserFromToken(authHeader?: string) {
@@ -165,7 +170,7 @@ export async function getUserFromToken(authHeader?: string) {
 
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
   const user = await getUserFromToken(req.header("authorization") ?? undefined);
-  if (!user) return res.status(401).json({ message: "Unauthorized" });
+  if (!user) return res.status(401).json({ error: { code: "UNAUTHORIZED", message: "Faça login para continuar." } });
   (req as Request & { authUser?: Awaited<ReturnType<typeof storage.getUser>> }).authUser = user;
   next();
 }

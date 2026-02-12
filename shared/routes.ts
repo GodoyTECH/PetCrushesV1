@@ -40,11 +40,20 @@ export const api = {
         400: errorSchemas.validation,
       },
     },
+    exists: {
+      method: 'GET' as const,
+      path: '/api/auth/exists' as const,
+      input: z.object({ email: z.string().email() }),
+      responses: {
+        200: z.object({ exists: z.boolean() }),
+        400: errorSchemas.validation,
+      },
+    },
     verifyOtp: {
       method: 'POST' as const,
       path: '/api/auth/verify-otp' as const,
       input: z.object({ email: z.string().email(), code: z.string().length(6) }),
-      responses: { 200: z.object({ token: z.string(), user: z.custom<typeof users.$inferSelect>() }), 400: errorSchemas.validation },
+      responses: { 200: z.object({ token: z.string(), user: z.custom<typeof users.$inferSelect>(), isNewUser: z.boolean() }), 400: errorSchemas.validation },
     },
     me: {
       method: 'GET' as const,

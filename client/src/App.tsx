@@ -16,6 +16,7 @@ import AdoptionFeed from "@/pages/AdoptionFeed";
 import Chat from "@/pages/Chat";
 import MobiPet from "@/pages/MobiPet";
 import NotFound from "@/pages/not-found";
+import Onboarding from "@/pages/Onboarding";
 
 function AppShell({ component: Component }: { component: React.ComponentType }) {
   const { isLoading } = useAuth();
@@ -39,6 +40,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Landing} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/onboarding" component={Onboarding} />
       
       {/* Protected App Routes */}
       <Route path="/app">
