@@ -13,6 +13,18 @@ type RequestOtpResult = {
 
 type ApiErrorPayload = { error?: { code?: string; message?: string }; message?: string };
 
+
+type UpdateMeInput = {
+  displayName?: string;
+  whatsapp?: string;
+  region?: string;
+  profileImageUrl?: string;
+  firstName?: string;
+  lastName?: string;
+  onboardingCompleted?: boolean;
+};
+
+
 function throwApiError(body: ApiErrorPayload, fallbackCode: string) {
   throw new Error(body?.error?.code ?? fallbackCode);
 }
@@ -60,6 +72,23 @@ async function verifyOtp(email: string, code: string): Promise<VerifyOtpResult> 
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as ApiErrorPayload;
     throwApiError(body, "OTP_INVALID_OR_EXPIRED");
+
+  }
+
+  return response.json();
+}
+
+async function updateMe(data: UpdateMeInput): Promise<User> {
+  const response = await apiFetch("/api/users/me", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as ApiErrorPayload;
+    throwApiError(body, "PROFILE_UPDATE_FAILED");
+
   }
 
   return response.json();
@@ -79,6 +108,13 @@ export function useAuth() {
     },
   });
 
+  const updateMeMutation = useMutation({
+    mutationFn: updateMe,
+    onSuccess: (user) => {
+      queryClient.setQueryData(AUTH_ME_KEY, user);
+    },
+  });
+
   const logout = () => {
     setAuthToken(null);
     queryClient.setQueryData(AUTH_ME_KEY, null);
@@ -91,9 +127,13 @@ export function useAuth() {
     checkAuthExists: existsMutation.mutateAsync,
     requestOtp: requestOtpMutation.mutateAsync,
     verifyOtp: verifyOtpMutation.mutateAsync,
+
+    updateMe: updateMeMutation.mutateAsync,
+
     isCheckingExists: existsMutation.isPending,
     isRequestingOtp: requestOtpMutation.isPending,
     isVerifyingOtp: verifyOtpMutation.isPending,
+    isUpdatingMe: updateMeMutation.isPending,
     logout,
   };
 }

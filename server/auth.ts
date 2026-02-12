@@ -7,6 +7,16 @@ const OTP_MAX_ATTEMPTS = 5;
 const OTP_RATE_LIMIT_WINDOW_MS = 10 * 60_000;
 const OTP_RATE_LIMIT_MAX_REQUESTS = 3;
 
+function hasText(value: string | null | undefined) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+export function isOnboardingCompleted(user: Awaited<ReturnType<typeof storage.getUser>> | null | undefined) {
+  if (!user) return false;
+  if (typeof user.onboardingCompleted === "boolean") return user.onboardingCompleted;
+  return hasText(user.displayName) && hasText(user.whatsapp) && hasText(user.region);
+}
+
 function getJwtSecret() {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error("JWT_SECRET is required");
@@ -153,7 +163,10 @@ export async function verifyOtp(emailInput: string, code: string) {
   }
 
   const token = signToken(user.id);
-  return { token, user, isNewUser } as const;
+
+  return { token, user: { ...user, onboardingCompleted: isOnboardingCompleted(user) }, isNewUser } as const;
+
+
 }
 
 export function normalizeAuthEmail(emailInput: string) {

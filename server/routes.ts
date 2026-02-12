@@ -5,13 +5,33 @@ import { api, BLOCKED_KEYWORDS } from "@shared/routes";
 import { z } from "zod";
 import multer from "multer";
 import crypto from "crypto";
-import { getAuthUser, normalizeAuthEmail, requireAuth, requestOtp, verifyOtp } from "./auth";
+
+import { getAuthUser, isOnboardingCompleted, normalizeAuthEmail, requireAuth, requestOtp, verifyOtp } from "./auth";
+
+
 
 const upload = multer({ storage: multer.memoryStorage() });
 
 
 const OTP_REQUEST_SCHEMA = z.object({ email: z.string().email() });
 const OTP_VERIFY_SCHEMA = z.object({ email: z.string().email(), code: z.string().length(6) });
+const USER_ME_UPDATE_SCHEMA = z.object({
+  displayName: z.string().trim().min(2).max(120).optional(),
+  whatsapp: z.string().trim().min(8).max(32).optional(),
+  region: z.string().trim().min(2).max(160).optional(),
+  profileImageUrl: z.string().url().optional(),
+  firstName: z.string().trim().min(1).max(120).optional(),
+  lastName: z.string().trim().min(1).max(120).optional(),
+  onboardingCompleted: z.boolean().optional(),
+});
+
+function authError(code: string, message: string) {
+  return { error: { code, message } };
+}
+
+function hasText(value: string | null | undefined) {
+  return typeof value === "string" && value.trim().length > 0;
+}
 
 function authError(code: string, message: string) {
   return { error: { code, message } };
@@ -98,7 +118,45 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.get("/api/auth/me", requireAuth, async (req, res) => {
-    return res.json(getAuthUser(req));
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json(authError("UNAUTHORIZED", "Faça login para continuar."));
+
+    return res.json({ ...user, onboardingCompleted: isOnboardingCompleted(user) });
+  });
+
+  app.get("/api/users/me", requireAuth, async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json(authError("UNAUTHORIZED", "Faça login para continuar."));
+
+    return res.json({ ...user, onboardingCompleted: isOnboardingCompleted(user) });
+  });
+
+  app.patch("/api/users/me", requireAuth, async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json(authError("UNAUTHORIZED", "Faça login para continuar."));
+
+    const parsed = USER_ME_UPDATE_SCHEMA.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json(authError("INVALID_USER_DATA", "Revise os dados do perfil e tente novamente."));
+    }
+
+    const input = parsed.data;
+    const computedOnboardingCompleted =
+      input.onboardingCompleted ??
+      (hasText(input.displayName ?? user.displayName) && hasText(input.whatsapp ?? user.whatsapp) && hasText(input.region ?? user.region));
+
+    try {
+      const updatedUser = await storage.updateUser(user.id, {
+        ...input,
+        onboardingCompleted: computedOnboardingCompleted,
+        updatedAt: new Date(),
+      });
+
+      return res.json({ ...updatedUser, onboardingCompleted: isOnboardingCompleted(updatedUser) });
+    } catch (error) {
+      console.error("[users-me-patch]", error);
+      return res.status(500).json(authError("PROFILE_UPDATE_FAILED", "Não foi possível salvar seu perfil agora. Tente novamente em instantes."));
+    }
   });
 
   const contentFilter = (content: string) => BLOCKED_KEYWORDS.find((k) => content.toLowerCase().includes(k.toLowerCase()));

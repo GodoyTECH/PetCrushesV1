@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -18,11 +18,28 @@ import MobiPet from "@/pages/MobiPet";
 import NotFound from "@/pages/not-found";
 import Onboarding from "@/pages/Onboarding";
 
+
+function isOnboardingComplete(user: any) {
+  if (!user) return false;
+  if (typeof user.onboardingCompleted === "boolean") return user.onboardingCompleted;
+  return Boolean(user.displayName && user.whatsapp && user.region);
+}
+
+
 function AppShell({ component: Component }: { component: React.ComponentType }) {
-  const { isLoading } = useAuth();
+  const { isLoading, user } = useAuth();
+  const [location] = useLocation();
 
   if (isLoading) {
     return <div className="h-screen flex items-center justify-center bg-background"><Loader2 className="animate-spin text-primary h-8 w-8" /></div>;
+  }
+
+  if (!user) {
+    return <Redirect to="/auth" />;
+  }
+
+  if (!isOnboardingComplete(user) && location !== "/onboarding") {
+    return <Redirect to="/onboarding" />;
   }
 
   return (
@@ -35,13 +52,33 @@ function AppShell({ component: Component }: { component: React.ComponentType }) 
   );
 }
 
+function OnboardingRoute() {
+  const { isLoading, user } = useAuth();
+
+  if (isLoading) {
+    return <div className="h-screen flex items-center justify-center bg-background"><Loader2 className="animate-spin text-primary h-8 w-8" /></div>;
+  }
+
+  if (!user) {
+    return <Redirect to="/auth" />;
+  }
+
+  if (isOnboardingComplete(user)) {
+    return <Redirect to="/app" />;
+  }
+
+  return <Onboarding />;
+}
+
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
       <Route path="/auth" component={AuthPage} />
+
       <Route path="/onboarding" component={Onboarding} />
       
+
       {/* Protected App Routes */}
       <Route path="/app">
          <AppShell component={Dashboard} />

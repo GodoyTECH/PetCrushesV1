@@ -87,6 +87,31 @@ export type AppTranslations = {
       generic: string;
       emailNotRegistered: string;
       emailAlreadyRegistered: string;
+
+    };
+  };
+  onboarding: {
+    title: string;
+    subtitle: string;
+    profilePhoto: string;
+    uploadPhoto: string;
+    displayName: string;
+    firstName: string;
+    lastName: string;
+    whatsapp: string;
+    country: string;
+    state: string;
+    city: string;
+    save: string;
+    saving: string;
+    successTitle: string;
+    successDescription: string;
+    errors: {
+      requiredFields: string;
+      invalidWhatsapp: string;
+      uploadFailed: string;
+      saveFailed: string;
+
     };
   };
 };
@@ -182,6 +207,31 @@ export const translations: Translations = {
         emailNotRegistered: 'This email is not registered yet. Click Create Account.',
         emailAlreadyRegistered: 'This email is already registered. Click Sign In.',
       },
+
+    },
+    onboarding: {
+      title: 'Complete your profile',
+      subtitle: 'Add your basic info to continue safely.',
+      profilePhoto: 'Profile photo',
+      uploadPhoto: 'Upload photo',
+      displayName: 'Display name',
+      firstName: 'First name (optional)',
+      lastName: 'Last name (optional)',
+      whatsapp: 'WhatsApp',
+      country: 'Country',
+      state: 'State',
+      city: 'City',
+      save: 'Save and continue',
+      saving: 'Saving...',
+      successTitle: 'Profile updated',
+      successDescription: 'Your profile is complete. Welcome!',
+      errors: {
+        requiredFields: 'Please fill in name, WhatsApp and location.',
+        invalidWhatsapp: 'Please enter a valid WhatsApp number.',
+        uploadFailed: 'Could not upload the photo now. Try again in a moment.',
+        saveFailed: 'Could not save your profile now. Try again shortly.',
+      },
+
     }
   },
   'pt-BR': {
@@ -270,6 +320,8 @@ export const translations: Translations = {
         emailNotRegistered: 'Esse e-mail ainda não está cadastrado. Clique em Criar conta.',
         emailAlreadyRegistered: 'Esse e-mail já está cadastrado. Clique em Entrar.',
       },
+    },
+    
     }
   }
 };

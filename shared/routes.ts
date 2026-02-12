@@ -73,6 +73,34 @@ export const api = {
         }
     }
   },
+
+  users: {
+    me: {
+      method: 'GET' as const,
+      path: '/api/users/me' as const,
+      responses: {
+        200: z.custom<typeof users.$inferSelect>(),
+        401: errorSchemas.forbidden,
+      },
+    },
+    updateMe: {
+      method: 'PATCH' as const,
+      path: '/api/users/me' as const,
+      input: z.object({
+        displayName: z.string().min(2).max(120).optional(),
+        whatsapp: z.string().min(8).max(32).optional(),
+        region: z.string().min(2).max(160).optional(),
+        profileImageUrl: z.string().url().optional(),
+        firstName: z.string().min(1).max(120).optional(),
+        lastName: z.string().min(1).max(120).optional(),
+        onboardingCompleted: z.boolean().optional(),
+      }),
+      responses: {
+        200: z.custom<typeof users.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
+  },
   pets: {
     list: {
       method: 'GET' as const,
