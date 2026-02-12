@@ -15,20 +15,13 @@ import { useMemo, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { CreatePetRequest } from "@shared/routes";
 import { apiFetch } from "@/lib/api";
-
-const SPECIES_OPTIONS = ["DOG", "CAT", "BIRD", "RABBIT", "OTHER"] as const;
-const BREEDS: Record<string, string[]> = {
-  DOG: ["Golden Retriever", "Labrador", "Poodle", "Bulldog", "Other"],
-  CAT: ["Siamese", "Persian", "Maine Coon", "Mixed", "Other"],
-  BIRD: ["Canary", "Parakeet", "Cockatiel", "Other"],
-  RABBIT: ["Holland Lop", "Lionhead", "Mini Rex", "Other"],
-  OTHER: ["Other"],
-};
+import { BREEDS_BY_SPECIES, getSpeciesLabel, SPECIES_OPTIONS, type PetSpecies } from "@/lib/pet-taxonomy";
 
 const formSchema = z.object({
   displayName: z.string().min(1, "Nome obrigatório / Name is required"),
   species: z.string().min(1, "Selecione a espécie / Select a species"),
-  breed: z.string().min(1, "Selecione a raça / Select a breed"),
+  breed: z.string().min(1, "Informe a raça / Enter the breed"),
+  useCustomBreed: z.boolean().optional(),
   gender: z.enum(["MALE", "FEMALE"]),
   size: z.enum(["SMALL", "MEDIUM", "LARGE"]).nullable().optional(),
   colorsRaw: z.string().min(1, "Informe ao menos uma cor / Enter at least one color"),
@@ -63,7 +56,7 @@ async function uploadFile(file: File) {
 }
 
 export function AddPetForm({ onSuccess }: { onSuccess: () => void }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { toast } = useToast();
   const createPet = useCreatePet();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -74,6 +67,7 @@ export function AddPetForm({ onSuccess }: { onSuccess: () => void }) {
       displayName: "",
       species: "DOG",
       breed: "",
+      useCustomBreed: false,
       gender: "MALE",
       size: "MEDIUM",
       colorsRaw: "",
@@ -93,9 +87,10 @@ export function AddPetForm({ onSuccess }: { onSuccess: () => void }) {
     },
   });
 
-  const species = form.watch("species");
-  const availableBreeds = useMemo(() => BREEDS[species] ?? ["Other"], [species]);
+  const species = form.watch("species") as PetSpecies;
   const showSize = species === "DOG" || species === "CAT";
+  const useCustomBreed = form.watch("useCustomBreed") ?? false;
+  const availableBreeds = useMemo(() => BREEDS_BY_SPECIES[species] ?? ["Outro"], [species]);
 
   async function handlePhotosUpload(files: FileList | null) {
     if (!files?.length) return;
@@ -145,14 +140,17 @@ export function AddPetForm({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
+        <FormField control={form.control} name="displayName" render={({ field }) => (<FormItem><FormLabel>{t.forms.name}</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField control={form.control} name="displayName" render={({ field }) => (<FormItem><FormLabel>{t.forms.name}</FormLabel><FormControl><Input placeholder="Rex" {...field} /></FormControl><FormMessage /></FormItem>)} />
-          <FormField control={form.control} name="species" render={({ field }) => (<FormItem><FormLabel>{t.forms.species}</FormLabel><Select onValueChange={(value) => { field.onChange(value); form.setValue("breed", ""); }} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select species" /></SelectTrigger></FormControl><SelectContent>{SPECIES_OPTIONS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+          <FormField control={form.control} name="species" render={({ field }) => (<FormItem><FormLabel>{t.forms.species}</FormLabel><Select onValueChange={(value) => { field.onChange(value); form.setValue("breed", ""); form.setValue("useCustomBreed", false); }} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select species" /></SelectTrigger></FormControl><SelectContent>{SPECIES_OPTIONS.map((s) => <SelectItem key={s} value={s}>{getSpeciesLabel(s, lang)}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+          <FormField control={form.control} name="breed" render={({ field }) => (<FormItem><FormLabel>{t.forms.breed}</FormLabel><FormControl><Input {...field} list={`breeds-${species}`} placeholder={lang === "pt-BR" ? "Digite a raça" : "Type the breed"} disabled={useCustomBreed} /></FormControl><datalist id={`breeds-${species}`}>{availableBreeds.map((b) => <option key={b} value={b} />)}</datalist><FormMessage /></FormItem>)} />
         </div>
 
+        <FormField control={form.control} name="useCustomBreed" render={({ field }) => (<FormItem className="flex gap-2 items-center"><Checkbox checked={field.value ?? false} onCheckedChange={(checked) => { field.onChange(checked === true); if (checked === true) form.setValue("breed", ""); }} /><FormLabel>{lang === "pt-BR" ? "Não encontrei / Outro" : "I couldn't find it / Other"}</FormLabel></FormItem>)} />
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <FormField control={form.control} name="breed" render={({ field }) => (<FormItem><FormLabel>{t.forms.breed}</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select breed" /></SelectTrigger></FormControl><SelectContent>{availableBreeds.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
           <FormField control={form.control} name="ageMonths" render={({ field }) => (<FormItem><FormLabel>{t.forms.age}</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
           <FormField control={form.control} name="gender" render={({ field }) => (<FormItem><FormLabel>{t.forms.gender}</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="MALE">Male</SelectItem><SelectItem value="FEMALE">Female</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
         </div>
@@ -167,7 +165,7 @@ export function AddPetForm({ onSuccess }: { onSuccess: () => void }) {
           <FormField control={form.control} name="city" render={({ field }) => (<FormItem><FormLabel>City</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
         </div>
 
-        <FormField control={form.control} name="about" render={({ field }) => (<FormItem><FormLabel>{t.forms.about}</FormLabel><FormControl><Textarea placeholder="Tell us about your pet..." className="resize-none h-32" {...field} /></FormControl><div className="text-xs text-muted-foreground flex items-center gap-1"><AlertTriangle size={12} className="text-amber-500" />{t.common.sales_warning}</div><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="about" render={({ field }) => (<FormItem><FormLabel>{t.forms.about}</FormLabel><FormControl><Textarea className="resize-none h-32" {...field} /></FormControl><div className="text-xs text-muted-foreground flex items-center gap-1"><AlertTriangle size={12} className="text-amber-500" />{t.common.sales_warning}</div><FormMessage /></FormItem>)} />
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <FormField control={form.control} name="pedigree" render={({ field }) => (<FormItem className="flex gap-2 items-center"><Checkbox checked={field.value} onCheckedChange={(checked) => field.onChange(checked === true)} /><FormLabel>Pedigree</FormLabel></FormItem>)} />
@@ -176,17 +174,8 @@ export function AddPetForm({ onSuccess }: { onSuccess: () => void }) {
           <FormField control={form.control} name="isDonation" render={({ field }) => (<FormItem className="flex gap-2 items-center"><Checkbox checked={field.value ?? false} onCheckedChange={(checked) => field.onChange(checked === true)} /><FormLabel>Adoption</FormLabel></FormItem>)} />
         </div>
 
-        <div className="space-y-2">
-          <FormLabel>{t.forms.photos} (mín. 3)</FormLabel>
-          <Input type="file" accept="image/*" multiple onChange={(e) => handlePhotosUpload(e.target.files).catch((err) => toast({ title: "Erro", description: err.message, variant: "destructive" }))} />
-          <p className="text-xs text-muted-foreground">{form.watch("photos").length} fotos enviadas</p>
-        </div>
-
-        <div className="space-y-2">
-          <FormLabel>Vídeo obrigatório (mínimo 5s) / Required video (min 5s)</FormLabel>
-          <Input type="file" accept="video/*" onChange={(e) => handleVideoUpload(e.target.files?.[0] ?? null).catch((err) => toast({ title: "Erro", description: err.message, variant: "destructive" }))} />
-          <p className="text-xs text-muted-foreground">{form.watch("videoUrl") ? "Vídeo enviado" : "Nenhum vídeo enviado"}</p>
-        </div>
+        <div className="space-y-2"><FormLabel>{t.forms.photos} (mín. 3)</FormLabel><Input type="file" accept="image/*" multiple onChange={(e) => handlePhotosUpload(e.target.files).catch((err) => toast({ title: "Erro", description: err.message, variant: "destructive" }))} /><p className="text-xs text-muted-foreground">{form.watch("photos").length} fotos enviadas</p></div>
+        <div className="space-y-2"><FormLabel>Vídeo obrigatório (mínimo 5s) / Required video (min 5s)</FormLabel><Input type="file" accept="video/*" onChange={(e) => handleVideoUpload(e.target.files?.[0] ?? null).catch((err) => toast({ title: "Erro", description: err.message, variant: "destructive" }))} /><p className="text-xs text-muted-foreground">{form.watch("videoUrl") ? "Vídeo enviado" : "Nenhum vídeo enviado"}</p></div>
 
         <Button type="submit" className="w-full h-12 text-lg font-semibold" disabled={isSubmitting}><Upload className="mr-2 h-4 w-4" />{isSubmitting ? <Loader2 className="animate-spin mr-2" /> : null}{t.forms.submit_pet}</Button>
       </form>

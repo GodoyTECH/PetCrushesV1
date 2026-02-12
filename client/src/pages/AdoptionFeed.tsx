@@ -1,59 +1,69 @@
-import { usePets } from "@/hooks/use-pets";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
+import { useAdoptions, useCreateAdoption } from "@/hooks/use-pets";
 import { useLanguage } from "@/lib/i18n";
-import { Loader2, Heart, ExternalLink } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BREEDS_BY_SPECIES, getSpeciesLabel, SPECIES_OPTIONS, type PetSpecies } from "@/lib/pet-taxonomy";
+import { apiFetch } from "@/lib/api";
+
+async function uploadFile(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await apiFetch("/api/media/upload", { method: "POST", body: formData });
+  if (!response.ok) throw new Error("Upload failed");
+  return response.json() as Promise<{ url: string }>;
+}
 
 export default function AdoptionFeed() {
-  const { t } = useLanguage();
-  // Filter for donations
-  const { data: pets, isLoading } = usePets({ isDonation: true });
-
-  if (isLoading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin" /></div>;
+  const { t, lang } = useLanguage();
+  const { data } = useAdoptions();
+  const create = useCreateAdoption();
+  const [open, setOpen] = useState(false);
+  const [species, setSpecies] = useState<PetSpecies>("DOG");
+  const [form, setForm] = useState({ name: "", breed: "", ageLabel: "", country: "", state: "", city: "", pedigree: false, neutered: false, description: "", contact: "", status: "DISPONIVEL" as const, photos: [] as string[] });
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
-      <div className="text-center mb-12 space-y-4">
-        <h1 className="text-4xl font-display font-bold text-primary">{t.donate.title}</h1>
-        <p className="text-xl text-muted-foreground">{t.donate.subtitle}</p>
-      </div>
+    <div className="max-w-5xl mx-auto px-4 py-6 space-y-4">
+      <h1 className="text-3xl font-display font-bold">Adoções</h1>
+      <p className="text-muted-foreground">A adoção é combinada fora do app. O PetCrushes apenas divulga.</p>
+      <Button onClick={() => setOpen((v) => !v)}>Registrar doação</Button>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {pets?.map((pet) => (
-          <Card key={pet.id} className="group overflow-hidden border-none shadow-md hover:shadow-xl transition-all duration-300 rounded-3xl bg-white flex flex-col">
-            <div className="aspect-[4/5] relative overflow-hidden bg-muted">
-              <img 
-                src={pet.photos[0]} 
-                alt={pet.displayName} 
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-              />
-              <div className="absolute top-3 left-3">
-                 <Badge className="bg-white/90 text-primary hover:bg-white shadow-sm backdrop-blur-sm">
-                    {pet.ageMonths} months
-                 </Badge>
-              </div>
-            </div>
-            
-            <CardContent className="p-5 flex-1">
-                <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-bold text-xl font-display">{pet.displayName}</h3>
-                    {pet.gender === 'MALE' ? <span className="text-blue-500 font-bold">♂</span> : <span className="text-pink-500 font-bold">♀</span>}
-                </div>
-                <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{pet.about}</p>
-                
-                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                    <Badge variant="secondary">{pet.breed}</Badge>
-                    <Badge variant="secondary">{pet.region}</Badge>
-                </div>
+      {open && (
+        <Card><CardContent className="p-4 space-y-3">
+          <Input placeholder="Nome" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <select className="w-full border rounded-md h-10 px-3" value={species} onChange={(e) => { setSpecies(e.target.value as PetSpecies); setForm({ ...form, breed: "" }); }}>
+            {SPECIES_OPTIONS.map((s) => <option key={s} value={s}>{getSpeciesLabel(s, lang)}</option>)}
+          </select>
+          <Input placeholder="Raça" list={`adopt-breeds-${species}`} value={form.breed} onChange={(e) => setForm({ ...form, breed: e.target.value })} />
+          <datalist id={`adopt-breeds-${species}`}>{(BREEDS_BY_SPECIES[species] ?? []).map((b) => <option key={b} value={b} />)}</datalist>
+          <Input placeholder="Idade (ex: 2 anos)" value={form.ageLabel} onChange={(e) => setForm({ ...form, ageLabel: e.target.value })} />
+          <div className="grid grid-cols-3 gap-2"><Input placeholder="País" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} /><Input placeholder="Estado" value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} /><Input placeholder="Cidade" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} /></div>
+          <Textarea placeholder="Descrição" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+          <Input placeholder="WhatsApp/telefone" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} />
+          <div className="flex gap-4"><label className="flex items-center gap-2"><Checkbox checked={form.pedigree} onCheckedChange={(v) => setForm({ ...form, pedigree: v === true })} />Pedigree</label><label className="flex items-center gap-2"><Checkbox checked={form.neutered} onCheckedChange={(v) => setForm({ ...form, neutered: v === true })} />Castrado</label></div>
+          <Input type="file" accept="image/*" multiple onChange={async (e) => {
+            const files = Array.from(e.target.files ?? []);
+            const uploaded = await Promise.all(files.map(uploadFile));
+            setForm((prev) => ({ ...prev, photos: [...prev.photos, ...uploaded.map((u) => u.url)] }));
+          }} />
+          <Button disabled={create.isPending || form.photos.length < 3} onClick={() => create.mutate({ ...form, species, breed: form.breed || "Outro" })}>Publicar</Button>
+        </CardContent></Card>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {(data?.items ?? []).map((post) => (
+          <Card key={post.id}>
+            <img src={post.photos[0]} className="w-full h-48 object-cover" />
+            <CardContent className="p-4 space-y-1">
+              <h3 className="font-bold text-xl">{post.name}</h3>
+              <p className="text-sm">{post.species} • {post.breed}</p>
+              <p className="text-sm text-muted-foreground">{post.city}/{post.state}</p>
+              <p className="text-sm">{post.description}</p>
+              <p className="font-semibold">Contato: {post.contact}</p>
             </CardContent>
-
-            <CardFooter className="p-4 pt-0">
-                <Button className="w-full rounded-full gap-2 shadow-lg shadow-primary/20 hover:shadow-xl hover:-translate-y-0.5 transition-all">
-                    <Heart size={16} className="fill-current" />
-                    {t.donate.adopt}
-                </Button>
-            </CardFooter>
           </Card>
         ))}
       </div>

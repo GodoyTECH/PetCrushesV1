@@ -82,6 +82,10 @@ export type AppTranslations = {
     back: string;
     createAccountHint: string;
     signInHint: string;
+    passwordAuth: string;
+    otpAuth: string;
+    passwordPlaceholder: string;
+    confirmPasswordPlaceholder: string;
     otpSent: string;
     otpSentDev: string;
     codeStepTitle: string;
@@ -94,7 +98,8 @@ export type AppTranslations = {
       generic: string;
       emailNotRegistered: string;
       emailAlreadyRegistered: string;
-
+      weakPassword: string;
+      passwordMismatch: string;
     };
   };
   onboarding: {
@@ -209,6 +214,10 @@ export const translations: Translations = {
       back: 'Back',
       createAccountHint: 'New here? Create account.',
       signInHint: 'Already registered? Sign in.',
+      passwordAuth: 'Email + password',
+      otpAuth: 'OTP code',
+      passwordPlaceholder: 'Your password',
+      confirmPasswordPlaceholder: 'Confirm password',
       otpSent: 'Code sent to your email.',
       otpSentDev: 'Code sent via dev mode. Check server logs.',
       codeStepTitle: 'Check your email',
@@ -221,6 +230,8 @@ export const translations: Translations = {
         generic: 'Something went wrong. Please try again.',
         emailNotRegistered: 'This email is not registered yet. Click Create Account.',
         emailAlreadyRegistered: 'This email is already registered. Click Sign In.',
+        weakPassword: 'Your password must have at least 8 characters, one letter, one number and one symbol.',
+        passwordMismatch: 'Password confirmation does not match.',
       },
 
     },
@@ -330,6 +341,10 @@ export const translations: Translations = {
       back: 'Voltar',
       createAccountHint: 'Primeiro acesso? Crie sua conta.',
       signInHint: 'Já tem cadastro? Entre.',
+      passwordAuth: 'E-mail + senha',
+      otpAuth: 'Código OTP',
+      passwordPlaceholder: 'Sua senha',
+      confirmPasswordPlaceholder: 'Confirmar senha',
       otpSent: 'Código enviado para seu e-mail.',
       otpSentDev: 'Código enviado em modo dev. Verifique os logs do servidor.',
       codeStepTitle: 'Verifique seu e-mail',
@@ -342,6 +357,8 @@ export const translations: Translations = {
         generic: 'Algo deu errado. Tente novamente.',
         emailNotRegistered: 'Esse e-mail ainda não está cadastrado. Clique em Criar conta.',
         emailAlreadyRegistered: 'Esse e-mail já está cadastrado. Clique em Entrar.',
+        weakPassword: 'Sua senha precisa ter no mínimo 8 caracteres, letra, número e símbolo.',
+        passwordMismatch: 'A confirmação da senha não confere.',
       },
     },
     onboarding: {

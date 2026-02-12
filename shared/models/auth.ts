@@ -23,6 +23,10 @@ export const users = pgTable("users", {
   // Additional fields for PetCrushes
   displayName: varchar("display_name"),
   whatsapp: varchar("whatsapp"),
+  passwordHash: varchar("password_hash"),
+  authProvider: varchar("auth_provider").default("email"),
+  googleId: varchar("google_id"),
+  lastLoginAt: timestamp("last_login_at"),
   region: varchar("region"),
   verified: varchar("verified"),
   isAdmin: varchar("is_admin"),
