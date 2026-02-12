@@ -1,8 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, buildUrl, type CreatePetRequest, type UpdatePetRequest } from "@shared/routes";
+import { api, buildUrl, type CreatePetRequest, type UpdatePetRequest, type SetActivePetRequest } from "@shared/routes";
 import { apiFetch } from "@/lib/api";
 
-// GET /api/pets
 export function usePets(filters?: {
   species?: string;
   breed?: string;
@@ -46,11 +45,35 @@ export function useMyPets() {
 
 export function useMyDefaultPet() {
   return useQuery({
-    queryKey: [api.pets.mineDefault.path],
+    queryKey: [api.pets.mineActive.path],
     queryFn: async () => {
-      const res = await apiFetch(api.pets.mineDefault.path);
-      if (!res.ok) throw new Error("Failed to fetch your default pet");
-      return api.pets.mineDefault.responses[200].parse(await res.json());
+      const res = await apiFetch(api.pets.mineActive.path);
+      if (!res.ok) throw new Error("Failed to fetch your active pet");
+      return api.pets.mineActive.responses[200].parse(await res.json());
+    },
+  });
+}
+
+export function useSetMyActivePet() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: SetActivePetRequest) => {
+      const res = await apiFetch(api.pets.setMineActive.path, {
+        method: api.pets.setMineActive.method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to set active pet');
+      }
+      return api.pets.setMineActive.responses[200].parse(await res.json());
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.pets.mine.path] });
+      queryClient.invalidateQueries({ queryKey: [api.pets.mineActive.path] });
+      queryClient.invalidateQueries({ queryKey: [api.matches.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.feed.list.path] });
     },
   });
 }
@@ -79,7 +102,6 @@ export function useFeed(filters?: {
   });
 }
 
-// GET /api/pets/:id
 export function usePet(id: number) {
   return useQuery({
     queryKey: [api.pets.get.path, id],
@@ -93,7 +115,6 @@ export function usePet(id: number) {
   });
 }
 
-// POST /api/pets
 export function useCreatePet() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -113,12 +134,12 @@ export function useCreatePet() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.pets.list.path] });
       queryClient.invalidateQueries({ queryKey: [api.pets.mine.path] });
+      queryClient.invalidateQueries({ queryKey: [api.pets.mineActive.path] });
       queryClient.invalidateQueries({ queryKey: [api.feed.list.path] });
     },
   });
 }
 
-// PUT /api/pets/:id
 export function useUpdatePet() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -136,11 +157,11 @@ export function useUpdatePet() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.pets.list.path] });
       queryClient.invalidateQueries({ queryKey: [api.pets.mine.path] });
+      queryClient.invalidateQueries({ queryKey: [api.pets.mineActive.path] });
     },
   });
 }
 
-// DELETE /api/pets/:id
 export function useDeletePet() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -152,6 +173,7 @@ export function useDeletePet() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.pets.list.path] });
       queryClient.invalidateQueries({ queryKey: [api.pets.mine.path] });
+      queryClient.invalidateQueries({ queryKey: [api.pets.mineActive.path] });
       queryClient.invalidateQueries({ queryKey: [api.feed.list.path] });
     },
   });

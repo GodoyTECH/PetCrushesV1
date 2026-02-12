@@ -9,6 +9,8 @@ import { Loader2, X, Heart, MapPin, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "wouter";
+import { ActivePetSelector } from "@/components/ActivePetSelector";
+import { useToast } from "@/hooks/use-toast";
 
 type Filters = {
   species?: string;
@@ -20,6 +22,7 @@ type Filters = {
 
 export default function MatchFeed() {
   const { t } = useLanguage();
+  const { toast } = useToast();
   const [filters, setFilters] = useState<Filters>({});
   const [page, setPage] = useState(1);
   const { data: myPet, isLoading: isLoadingMyPet } = useMyDefaultPet();
@@ -28,7 +31,6 @@ export default function MatchFeed() {
 
   const pets = feed?.items ?? [];
   const [currentIndex, setCurrentIndex] = useState(0);
-
   const currentPet = useMemo(() => pets[currentIndex], [pets, currentIndex]);
 
   if (isLoading || isLoadingMyPet) {
@@ -38,10 +40,10 @@ export default function MatchFeed() {
   if (!myPet) {
     return (
       <div className="h-full max-w-lg mx-auto flex flex-col items-center justify-center p-6 text-center">
-        <h2 className="text-xl font-bold mb-2">Você ainda não cadastrou um pet. Cadastre para começar.</h2>
-        <p className="text-muted-foreground mb-6">You still don't have a registered pet. Add one to start matching.</p>
+        <h2 className="text-xl font-bold mb-2">{t.match.needActivePetTitle}</h2>
+        <p className="text-muted-foreground mb-6">{t.match.needActivePetDescription}</p>
         <Link href="/app">
-          <Button>Ir para meus pets</Button>
+          <Button>{t.match.goToMyPets}</Button>
         </Link>
       </div>
     );
@@ -51,7 +53,19 @@ export default function MatchFeed() {
     if (!currentPet) return;
 
     if (direction === 'right') {
-      likeMutation.mutate({ likerPetId: myPet.id, targetPetId: currentPet.id });
+      likeMutation.mutate(
+        { likerPetId: myPet.id, targetPetId: currentPet.id },
+        {
+          onSuccess: (result) => {
+            if (result.matched) {
+              toast({ title: t.match.matchedToastTitle, description: t.match.matchedToastDescription });
+            }
+          },
+          onError: (error) => {
+            toast({ title: t.common.error, description: error.message, variant: "destructive" });
+          },
+        },
+      );
     }
 
     setTimeout(() => setCurrentIndex((prev) => prev + 1), 200);
@@ -59,6 +73,10 @@ export default function MatchFeed() {
 
   return (
     <div className="h-full max-w-lg mx-auto flex flex-col p-4 md:p-6">
+      <div className="mb-4">
+        <ActivePetSelector />
+      </div>
+
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
         <Select onValueChange={(val) => { setFilters((prev) => ({ ...prev, species: val === 'ALL' ? undefined : val })); setPage(1); setCurrentIndex(0); }}>
           <SelectTrigger className="w-[120px] rounded-full bg-white border-none shadow-sm"><SelectValue placeholder={t.match.species} /></SelectTrigger>

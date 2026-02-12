@@ -1,6 +1,6 @@
 import { useMatches, useMatch, useSendMessage } from "@/hooks/use-interactions";
 import { useAuth } from "@/hooks/use-auth";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,9 +12,12 @@ import { Send, MoreVertical, ShieldAlert, MessageCircle, Loader2 } from "lucide-
 import { cn } from "@/lib/utils";
 import { BLOCKED_KEYWORDS } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { ActivePetSelector } from "@/components/ActivePetSelector";
+import { useLanguage } from "@/lib/i18n";
 
 export default function Chat() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const { data: myPet, isLoading: isLoadingMyPet } = useMyDefaultPet();
   const { data: matches } = useMatches();
   const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
@@ -22,6 +25,11 @@ export default function Chat() {
   const sendMessage = useSendMessage();
   const [msgInput, setMsgInput] = useState("");
   const { toast } = useToast();
+
+  const selectedOtherPet = useMemo(() => {
+    if (!activeMatch || !myPet) return null;
+    return activeMatch.petAId === myPet.id ? activeMatch.petB : activeMatch.petA;
+  }, [activeMatch, myPet]);
 
   const handleSend = () => {
     if (!msgInput.trim() || !selectedMatchId) return;
@@ -42,9 +50,9 @@ export default function Chat() {
   if (!myPet) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-6 text-center">
-        <h2 className="text-xl font-bold mb-2">Você ainda não cadastrou um pet. Cadastre para começar.</h2>
-        <p className="text-muted-foreground mb-6">You still don't have a registered pet. Add one to start chatting.</p>
-        <Link href="/app"><Button>Ir para meus pets</Button></Link>
+        <h2 className="text-xl font-bold mb-2">{t.match.needActivePetTitle}</h2>
+        <p className="text-muted-foreground mb-6">{t.match.needActivePetDescription}</p>
+        <Link href="/app"><Button>{t.match.goToMyPets}</Button></Link>
       </div>
     );
   }
@@ -52,13 +60,16 @@ export default function Chat() {
   return (
     <div className="h-[calc(100vh-2rem)] container mx-auto p-4 flex gap-4 max-w-6xl">
       <Card className="w-80 flex flex-col overflow-hidden border-none shadow-lg">
-        <div className="p-4 border-b bg-muted/30"><h2 className="font-display font-bold text-lg">Matches</h2></div>
+        <div className="p-4 border-b bg-muted/30 space-y-3">
+          <h2 className="font-display font-bold text-lg">Matches</h2>
+          <ActivePetSelector />
+        </div>
         <ScrollArea className="flex-1">
           <div className="flex flex-col p-2 gap-1">
             {matches?.map(match => {
-              const otherPet = match.petA;
+              const otherPet = match.petAId === myPet.id ? match.petB : match.petA;
               return (
-                <button key={match.id} onClick={() => setSelectedMatchId(match.id)} className={cn("flex items-center gap-3 p-3 rounded-xl transition-colors text-left hover:bg-secondary/50", selectedMatchId === match.id ? "bg-secondary" : "")}>
+                <button key={match.id} onClick={() => setSelectedMatchId(match.id)} className={cn("flex items-center gap-3 p-3 rounded-xl transition-colors text-left hover:bg-secondary/50", selectedMatchId === match.id ? "bg-secondary" : "") }>
                   <Avatar className="h-12 w-12 border-2 border-white shadow-sm"><AvatarImage src={otherPet.photos[0]} /><AvatarFallback>{otherPet.displayName[0]}</AvatarFallback></Avatar>
                   <div className="flex-1 overflow-hidden"><p className="font-bold truncate">{otherPet.displayName}</p><p className="text-xs text-muted-foreground truncate">Say hello! 👋</p></div>
                 </button>
@@ -69,12 +80,12 @@ export default function Chat() {
       </Card>
 
       <Card className="flex-1 flex flex-col overflow-hidden border-none shadow-lg">
-        {selectedMatchId && activeMatch ? (
+        {selectedMatchId && activeMatch && selectedOtherPet ? (
           <>
             <div className="p-4 border-b flex justify-between items-center bg-white z-10">
               <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10"><AvatarImage src={activeMatch.petA.photos[0]} /><AvatarFallback>?</AvatarFallback></Avatar>
-                <div><h3 className="font-bold">{activeMatch.petA.displayName}</h3><div className="flex items-center gap-1 text-xs text-green-500"><span className="w-2 h-2 rounded-full bg-green-500" />Online</div></div>
+                <Avatar className="h-10 w-10"><AvatarImage src={selectedOtherPet.photos[0]} /><AvatarFallback>?</AvatarFallback></Avatar>
+                <div><h3 className="font-bold">{selectedOtherPet.displayName}</h3><div className="flex items-center gap-1 text-xs text-green-500"><span className="w-2 h-2 rounded-full bg-green-500" />Online</div></div>
               </div>
               <Button variant="ghost" size="icon"><MoreVertical size={18} /></Button>
             </div>

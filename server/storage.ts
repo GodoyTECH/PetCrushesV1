@@ -5,7 +5,7 @@ import {
   type Match, type Message, type InsertMessage, type Report, type OtpCode
 } from "@shared/schema";
 import { users, type User, type UpsertUser } from "@shared/models/auth";
-import { eq, or, and, desc, isNull, gte, sql, ne } from "drizzle-orm";
+import { eq, or, and, desc, isNull, gte, sql, ne, asc } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -32,6 +32,8 @@ export interface IStorage {
   }): Promise<Pet[]>;
   createPet(pet: InsertPet): Promise<Pet>;
   updatePet(id: number, pet: Partial<InsertPet>): Promise<Pet>;
+  getMyActivePet(ownerId: string): Promise<Pet | null>;
+  setActivePet(ownerId: string, petId: number): Promise<Pet>;
   deletePet(id: number): Promise<void>;
 
   // Likes & Matches
@@ -118,8 +120,37 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPet(insertPet: InsertPet): Promise<Pet> {
-    const [pet] = await db.insert(pets).values(insertPet).returning();
-    return pet;
+    return await db.transaction(async (tx) => {
+      const ownerPets = await tx.select({ id: pets.id }).from(pets).where(eq(pets.ownerId, insertPet.ownerId)).limit(1);
+      const [pet] = await tx.insert(pets).values({ ...insertPet, isActive: ownerPets.length === 0 }).returning();
+      return pet;
+    });
+  }
+
+  async getMyActivePet(ownerId: string): Promise<Pet | null> {
+    const [activePet] = await db.select().from(pets).where(and(eq(pets.ownerId, ownerId), eq(pets.isActive, true))).limit(1);
+    if (activePet) return activePet;
+
+    const [firstPet] = await db.select().from(pets).where(eq(pets.ownerId, ownerId)).orderBy(asc(pets.id)).limit(1);
+    if (!firstPet) return null;
+
+    await db.update(pets).set({ isActive: false }).where(eq(pets.ownerId, ownerId));
+    const [selected] = await db.update(pets).set({ isActive: true }).where(eq(pets.id, firstPet.id)).returning();
+    return selected ?? firstPet;
+  }
+
+  async setActivePet(ownerId: string, petId: number): Promise<Pet> {
+    return await db.transaction(async (tx) => {
+      const [ownedPet] = await tx.select().from(pets).where(and(eq(pets.id, petId), eq(pets.ownerId, ownerId))).limit(1);
+      if (!ownedPet) {
+        throw new Error("PET_NOT_FOUND_OR_NOT_OWNED");
+      }
+
+      await tx.update(pets).set({ isActive: false }).where(eq(pets.ownerId, ownerId));
+      const [selected] = await tx.update(pets).set({ isActive: true }).where(eq(pets.id, petId)).returning();
+      if (!selected) throw new Error("PET_NOT_FOUND_OR_NOT_OWNED");
+      return selected;
+    });
   }
 
   async updatePet(id: number, updates: Partial<InsertPet>): Promise<Pet> {
@@ -132,34 +163,41 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createLike(likerPetId: number, targetPetId: number): Promise<{ like: { id: number; likerPetId: number; targetPetId: number; createdAt: Date | null }; isMatch: boolean; match?: Match }> {
+    const petLowId = Math.min(likerPetId, targetPetId);
+    const petHighId = Math.max(likerPetId, targetPetId);
+
     const [existingLike] = await db.select().from(likes).where(and(
       eq(likes.likerPetId, likerPetId),
       eq(likes.targetPetId, targetPetId),
     ));
 
     if (existingLike) {
-      const [existingMatch] = await db.select().from(matches).where(or(
-        and(eq(matches.petAId, likerPetId), eq(matches.petBId, targetPetId)),
-        and(eq(matches.petAId, targetPetId), eq(matches.petBId, likerPetId)),
+      const [existingMatch] = await db.select().from(matches).where(and(
+        eq(matches.petLowId, petLowId),
+        eq(matches.petHighId, petHighId),
       ));
       return { like: existingLike, isMatch: !!existingMatch, match: existingMatch };
     }
 
-    // 1. Create Like
     const [like] = await db.insert(likes).values({ likerPetId, targetPetId }).returning();
 
-    // 2. Check Reciprocity (Does target already like liker?)
     const [reciprocal] = await db.select().from(likes).where(and(
       eq(likes.likerPetId, targetPetId),
       eq(likes.targetPetId, likerPetId)
     ));
 
     if (reciprocal) {
-      // 3. Create Match
-      const [match] = await db.insert(matches).values({
+      await db.insert(matches).values({
         petAId: likerPetId,
         petBId: targetPetId,
-      }).returning();
+        petLowId,
+        petHighId,
+      }).onConflictDoNothing({ target: [matches.petLowId, matches.petHighId] });
+
+      const [match] = await db.select().from(matches).where(and(
+        eq(matches.petLowId, petLowId),
+        eq(matches.petHighId, petHighId),
+      ));
       return { like, isMatch: true, match };
     }
 

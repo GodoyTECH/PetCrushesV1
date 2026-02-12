@@ -170,7 +170,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/pets/mine", requireAuth, async (req, res) => {
     const user = getAuthUser(req);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (!user) return res.status(401).json({ message: "Faça login para continuar. / Please sign in to continue." });
 
     const pets = await storage.getPets({ ownerId: user.id, limit: 50, page: 1 });
     return res.json(pets);
@@ -178,15 +178,42 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get("/api/pets/mine/default", requireAuth, async (req, res) => {
     const user = getAuthUser(req);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (!user) return res.status(401).json({ message: "Faça login para continuar. / Please sign in to continue." });
 
-    const pets = await storage.getPets({ ownerId: user.id, limit: 1, page: 1 });
-    return res.json(pets[0] ?? null);
+    const activePet = await storage.getMyActivePet(user.id);
+    return res.json(activePet);
+  });
+
+  app.get(api.pets.mineActive.path, requireAuth, async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json({ message: "Faça login para continuar. / Please sign in to continue." });
+
+    const activePet = await storage.getMyActivePet(user.id);
+    return res.json(activePet);
+  });
+
+  app.patch(api.pets.setMineActive.path, requireAuth, async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json({ message: "Faça login para continuar. / Please sign in to continue." });
+
+    try {
+      const { petId } = api.pets.setMineActive.input.parse(req.body);
+      const activePet = await storage.setActivePet(user.id, petId);
+      return res.json(activePet);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Escolha um pet válido. / Pick a valid pet." });
+      }
+      if (error instanceof Error && error.message === "PET_NOT_FOUND_OR_NOT_OWNED") {
+        return res.status(404).json({ message: "Pet não encontrado na sua conta. / Pet not found in your account." });
+      }
+      return res.status(500).json({ message: "Não foi possível atualizar o pet ativo agora. / We couldn't update your active pet right now." });
+    }
   });
 
   app.get("/api/feed", requireAuth, async (req, res) => {
     const user = getAuthUser(req);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (!user) return res.status(401).json({ message: "Faça login para continuar. / Please sign in to continue." });
 
     const query = req.query as any;
     const page = Number(query.page || 1);
@@ -219,7 +246,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post(api.pets.create.path, requireAuth, async (req, res) => {
     const user = getAuthUser(req);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (!user) return res.status(401).json({ message: "Faça login para continuar. / Please sign in to continue." });
 
     try {
       const input = api.pets.create.input.parse(req.body);
@@ -243,7 +270,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.put(api.pets.update.path, requireAuth, async (req, res) => {
     const user = getAuthUser(req);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (!user) return res.status(401).json({ message: "Faça login para continuar. / Please sign in to continue." });
 
     try {
       const pet = await storage.getPet(Number(req.params.id));
@@ -261,7 +288,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.delete(api.pets.delete.path, requireAuth, async (req, res) => {
     const user = getAuthUser(req);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (!user) return res.status(401).json({ message: "Faça login para continuar. / Please sign in to continue." });
 
     const pet = await storage.getPet(Number(req.params.id));
     if (!pet) return res.status(404).json({ message: "Pet not found" });
@@ -273,52 +300,53 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post(api.likes.create.path, requireAuth, async (req, res) => {
     const user = getAuthUser(req);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (!user) return res.status(401).json({ message: "Faça login para continuar. / Please sign in to continue." });
 
     try {
       const { likerPetId, targetPetId } = api.likes.create.input.parse(req.body);
-      if (likerPetId === targetPetId) return res.status(400).json({ message: "Cannot like your own pet" });
+      if (likerPetId === targetPetId) return res.status(400).json({ message: "Você não pode curtir seu próprio pet. / You cannot like your own pet." });
 
       const likerPet = await storage.getPet(Number(likerPetId));
       const targetPet = await storage.getPet(Number(targetPetId));
-      if (!likerPet || !targetPet) return res.status(404).json({ message: "Pet not found" });
+      if (!likerPet || !targetPet) return res.status(404).json({ message: "Pet não encontrado. / Pet not found." });
       if (likerPet.ownerId !== user.id) return res.status(403).json({ error: "FORBIDDEN" });
-      if (targetPet.ownerId === user.id) return res.status(400).json({ message: "Cannot like your own pet" });
+      if (targetPet.ownerId === user.id) return res.status(400).json({ message: "Você não pode curtir seu próprio pet. / You cannot like your own pet." });
 
       const result = await storage.createLike(likerPetId, targetPetId);
       res.json({ matched: result.isMatch, matchId: result.match?.id });
     } catch {
-      res.status(400).json({ message: "Error creating like" });
+      res.status(400).json({ message: "Não foi possível registrar esse like agora. / Could not save this like right now." });
     }
   });
 
   app.get(api.matches.list.path, requireAuth, async (req, res) => {
     const user = getAuthUser(req);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (!user) return res.status(401).json({ message: "Faça login para continuar. / Please sign in to continue." });
 
     const userPets = await storage.getPets({ ownerId: user.id });
-    const allMatches: any[] = [];
+    const allMatches = new Map<number, any>();
     for (const pet of userPets) {
       const petMatches = await storage.getMatches(pet.id);
       for (const m of petMatches) {
+        if (allMatches.has(m.id)) continue;
         const petA = await storage.getPet(m.petAId);
         const petB = await storage.getPet(m.petBId);
-        if (petA && petB) allMatches.push({ ...m, petA, petB });
+        if (petA && petB) allMatches.set(m.id, { ...m, petA, petB });
       }
     }
-    res.json(allMatches);
+    res.json(Array.from(allMatches.values()));
   });
 
   app.get(api.matches.get.path, requireAuth, async (req, res) => {
     const user = getAuthUser(req);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (!user) return res.status(401).json({ message: "Faça login para continuar. / Please sign in to continue." });
 
     const match = await storage.getMatch(Number(req.params.id));
-    if (!match) return res.status(404).json({ message: "Match not found" });
+    if (!match) return res.status(404).json({ message: "Match não encontrado. / Match not found." });
     const petA = await storage.getPet(match.petAId);
     const petB = await storage.getPet(match.petBId);
-    if (!petA || !petB) return res.status(404).json({ message: "Match pets not found" });
-    if (petA.ownerId !== user.id && petB.ownerId !== user.id) return res.status(403).json({ error: "FORBIDDEN" });
+    if (!petA || !petB) return res.status(404).json({ message: "Pets do match não encontrados. / Match pets not found." });
+    if (petA.ownerId !== user.id && petB.ownerId !== user.id) return res.status(403).json({ message: "Você não participa desta conversa. / You are not part of this chat." });
 
     const messages = await storage.getMessages(match.id);
     res.json({ ...match, petA, petB, messages });
@@ -326,29 +354,29 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.post(api.messages.create.path, requireAuth, async (req, res) => {
     const user = getAuthUser(req);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (!user) return res.status(401).json({ message: "Faça login para continuar. / Please sign in to continue." });
 
     try {
       const { content } = req.body;
-      if (contentFilter(content)) return res.status(400).json({ message: "Sales content blocked" });
+      if (contentFilter(content)) return res.status(400).json({ message: "Conversas sobre venda/pagamento não são permitidas. / Sales/payment talk is not allowed." });
 
       const match = await storage.getMatch(Number(req.params.id));
-      if (!match) return res.status(404).json({ message: "Match not found" });
+      if (!match) return res.status(404).json({ message: "Match não encontrado. / Match not found." });
       const petA = await storage.getPet(match.petAId);
       const petB = await storage.getPet(match.petBId);
-      if (!petA || !petB) return res.status(404).json({ message: "Match pets not found" });
-      if (petA.ownerId !== user.id && petB.ownerId !== user.id) return res.status(403).json({ error: "FORBIDDEN" });
+      if (!petA || !petB) return res.status(404).json({ message: "Pets do match não encontrados. / Match pets not found." });
+      if (petA.ownerId !== user.id && petB.ownerId !== user.id) return res.status(403).json({ message: "Você não participa desta conversa. / You are not part of this chat." });
 
       const message = await storage.createMessage({ matchId: Number(req.params.id), senderId: user.id, content });
       res.status(201).json(message);
     } catch {
-      res.status(400).json({ message: "Error sending message" });
+      res.status(400).json({ message: "Não foi possível enviar a mensagem agora. / Could not send your message right now." });
     }
   });
 
   app.post(api.reports.create.path, requireAuth, async (req, res) => {
     const user = getAuthUser(req);
-    if (!user) return res.status(401).json({ message: "Unauthorized" });
+    if (!user) return res.status(401).json({ message: "Faça login para continuar. / Please sign in to continue." });
 
     const { targetPetId, reason } = req.body;
     const report = await storage.createReport({ reporterId: user.id, targetPetId, reason });
