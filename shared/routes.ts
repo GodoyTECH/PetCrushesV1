@@ -138,6 +138,25 @@ export const api = {
         401: errorSchemas.forbidden,
       },
     },
+    mineActive: {
+      method: 'GET' as const,
+      path: '/api/pets/mine/active' as const,
+      responses: {
+        200: z.custom<typeof pets.$inferSelect | null>(),
+        401: errorSchemas.forbidden,
+      },
+    },
+    setMineActive: {
+      method: 'PATCH' as const,
+      path: '/api/pets/mine/active' as const,
+      input: z.object({ petId: z.number().int().positive() }),
+      responses: {
+        200: z.custom<typeof pets.$inferSelect>(),
+        400: errorSchemas.validation,
+        401: errorSchemas.forbidden,
+        404: errorSchemas.notFound,
+      },
+    },
     get: {
       method: 'GET' as const,
       path: '/api/pets/:id' as const,
@@ -286,3 +305,4 @@ export type CreatePetRequest = z.infer<typeof api.pets.create.input>;
 export type UpdatePetRequest = z.infer<typeof api.pets.update.input>;
 export type CreateLikeRequest = z.infer<typeof api.likes.create.input>;
 export type CreateReportRequest = z.infer<typeof api.reports.create.input>;
+export type SetActivePetRequest = z.infer<typeof api.pets.setMineActive.input>;

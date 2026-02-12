@@ -27,6 +27,13 @@ export type AppTranslations = {
     region: string;
     like: string;
     nope: string;
+    activePetLabel: string;
+    selectActivePet: string;
+    needActivePetTitle: string;
+    needActivePetDescription: string;
+    goToMyPets: string;
+    matchedToastTitle: string;
+    matchedToastDescription: string;
   };
   donate: {
     title: string;
@@ -147,6 +154,13 @@ export const translations: Translations = {
       region: 'Region',
       like: 'Crush!',
       nope: 'Pass',
+      activePetLabel: 'My active pet',
+      selectActivePet: 'Choose your active pet',
+      needActivePetTitle: 'Choose an active pet to continue',
+      needActivePetDescription: 'Select one of your pets to like and start chats.',
+      goToMyPets: 'Go to my pets',
+      matchedToastTitle: "It's a match!",
+      matchedToastDescription: "It's a match! Now you can start chatting.",
     },
     donate: {
       title: 'Adoption Center',
@@ -261,6 +275,13 @@ export const translations: Translations = {
       region: 'Região',
       like: 'Crush!',
       nope: 'Passar',
+      activePetLabel: 'Meu pet ativo',
+      selectActivePet: 'Escolha seu pet ativo',
+      needActivePetTitle: 'Escolha um pet ativo para continuar',
+      needActivePetDescription: 'Selecione um dos seus pets para curtir e iniciar conversas.',
+      goToMyPets: 'Ir para meus pets',
+      matchedToastTitle: 'Deu match!',
+      matchedToastDescription: 'Deu match! Agora vocês podem conversar.',
     },
     donate: {
       title: 'Centro de Adoção',

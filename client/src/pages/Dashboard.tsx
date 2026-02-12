@@ -8,6 +8,7 @@ import { AddPetForm } from "@/components/AddPetForm";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { ActivePetSelector } from "@/components/ActivePetSelector";
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -40,6 +41,10 @@ export default function Dashboard() {
           </DialogContent>
         </Dialog>
       </header>
+
+      <div className="mb-6 max-w-sm">
+        <ActivePetSelector />
+      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">

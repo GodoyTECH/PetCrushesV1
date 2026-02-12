@@ -29,6 +29,7 @@ export const pets = pgTable("pets", {
   about: text("about").notNull(),
   photos: text("photos").array().notNull(), // Array of URLs
   videoUrl: text("video_url").notNull(),
+  isActive: boolean("is_active").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -43,6 +44,8 @@ export const matches = pgTable("matches", {
   id: serial("id").primaryKey(),
   petAId: integer("pet_a_id").references(() => pets.id).notNull(),
   petBId: integer("pet_b_id").references(() => pets.id).notNull(),
+  petLowId: integer("pet_low_id").references(() => pets.id).notNull(),
+  petHighId: integer("pet_high_id").references(() => pets.id).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -105,7 +108,7 @@ export const messagesRelations = relations(messages, ({ one }) => ({
 // === BASE SCHEMAS ===
 
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, isAdmin: true });
-export const insertPetSchema = createInsertSchema(pets).omit({ id: true, createdAt: true });
+export const insertPetSchema = createInsertSchema(pets).omit({ id: true, createdAt: true, isActive: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
 export const insertReportSchema = createInsertSchema(reports).omit({ id: true, createdAt: true, status: true });
 

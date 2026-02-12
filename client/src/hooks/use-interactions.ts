@@ -13,7 +13,10 @@ export function useLikePet() {
         body: JSON.stringify(data),
       });
       
-      if (!res.ok) throw new Error('Failed to like pet');
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to like pet');
+      }
       return api.likes.create.responses[200].parse(await res.json());
     },
     onSuccess: () => {
@@ -74,7 +77,10 @@ export function useSendMessage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content }),
       });
-      if (!res.ok) throw new Error('Failed to send message');
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error.message || 'Failed to send message');
+      }
       return api.messages.create.responses[201].parse(await res.json());
     },
     onSuccess: (_, { matchId }) => {
