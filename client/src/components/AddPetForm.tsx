@@ -50,6 +50,9 @@ async function uploadFile(file: File) {
   const response = await apiFetch("/api/media/upload", { method: "POST", body: formData });
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
+    if (response.status === 503) {
+      throw new Error("Upload indisponível no momento. Verifique a configuração e toque em Tentar novamente.");
+    }
     throw new Error(payload?.error?.message ?? payload.message ?? "Não foi possível enviar o arquivo agora. / Could not upload right now.");
   }
   return response.json() as Promise<{ url: string; duration?: number }>;
@@ -174,8 +177,8 @@ export function AddPetForm({ onSuccess }: { onSuccess: () => void }) {
           <FormField control={form.control} name="isDonation" render={({ field }) => (<FormItem className="flex gap-2 items-center"><Checkbox checked={field.value ?? false} onCheckedChange={(checked) => field.onChange(checked === true)} /><FormLabel>Adoption</FormLabel></FormItem>)} />
         </div>
 
-        <div className="space-y-2"><FormLabel>{t.forms.photos} (mín. 3)</FormLabel><Input type="file" accept="image/*" multiple onChange={(e) => handlePhotosUpload(e.target.files).catch((err) => toast({ title: "Erro", description: err.message, variant: "destructive" }))} /><p className="text-xs text-muted-foreground">{form.watch("photos").length} fotos enviadas</p></div>
-        <div className="space-y-2"><FormLabel>Vídeo obrigatório (mínimo 5s) / Required video (min 5s)</FormLabel><Input type="file" accept="video/*" onChange={(e) => handleVideoUpload(e.target.files?.[0] ?? null).catch((err) => toast({ title: "Erro", description: err.message, variant: "destructive" }))} /><p className="text-xs text-muted-foreground">{form.watch("videoUrl") ? "Vídeo enviado" : "Nenhum vídeo enviado"}</p></div>
+        <div className="space-y-2"><FormLabel>{t.forms.photos} (mín. 3)</FormLabel><Input type="file" accept="image/*" multiple onChange={(e) => handlePhotosUpload(e.target.files).catch((err) => toast({ title: "Erro", description: `${err.message} Tente novamente.`, variant: "destructive" }))} /><p className="text-xs text-muted-foreground">{form.watch("photos").length} fotos enviadas</p></div>
+        <div className="space-y-2"><FormLabel>Vídeo obrigatório (mínimo 5s) / Required video (min 5s)</FormLabel><Input type="file" accept="video/*" onChange={(e) => handleVideoUpload(e.target.files?.[0] ?? null).catch((err) => toast({ title: "Erro", description: `${err.message} Tente novamente.`, variant: "destructive" }))} /><p className="text-xs text-muted-foreground">{form.watch("videoUrl") ? "Vídeo enviado" : "Nenhum vídeo enviado"}</p></div>
 
         <Button type="submit" className="w-full h-12 text-lg font-semibold" disabled={isSubmitting}><Upload className="mr-2 h-4 w-4" />{isSubmitting ? <Loader2 className="animate-spin mr-2" /> : null}{t.forms.submit_pet}</Button>
       </form>

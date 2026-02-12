@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage } from "@/lib/i18n";
-import { apiFetch } from "@/lib/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,47 +9,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import logoUrl from "../../../logo.png";
 
 const LOCATION_OPTIONS = {
-  BR: {
-    name: "Brasil",
-    states: {
-      SP: ["São Paulo", "Campinas", "Santos"],
-      RJ: ["Rio de Janeiro", "Niterói", "Petrópolis"],
-      MG: ["Belo Horizonte", "Uberlândia", "Juiz de Fora"],
-    },
-  },
-  US: {
-    name: "United States",
-    states: {
-      CA: ["Los Angeles", "San Diego", "San Francisco"],
-      FL: ["Miami", "Orlando", "Tampa"],
-      TX: ["Austin", "Dallas", "Houston"],
-    },
-  },
+  BR: { name: "Brasil", states: { SP: ["São Paulo", "Campinas", "Santos"], RJ: ["Rio de Janeiro", "Niterói", "Petrópolis"], MG: ["Belo Horizonte", "Uberlândia", "Juiz de Fora"] } },
+  US: { name: "United States", states: { CA: ["Los Angeles", "San Diego", "San Francisco"], FL: ["Miami", "Orlando", "Tampa"], TX: ["Austin", "Dallas", "Houston"] } },
 } as const;
 
 type CountryCode = keyof typeof LOCATION_OPTIONS;
-
-function applyWhatsappMask(value: string) {
-  const digits = value.replace(/\D/g, "").slice(0, 13);
-  if (!digits) return "";
-
-  const withCountry = digits.startsWith("55") ? digits : `55${digits}`;
-  const country = withCountry.slice(0, 2);
-  const area = withCountry.slice(2, 4);
-  const first = withCountry.slice(4, 9);
-  const last = withCountry.slice(9, 13);
-
-  if (withCountry.length <= 2) return `+${country}`;
-  if (withCountry.length <= 4) return `+${country} (${area}`;
-  if (withCountry.length <= 9) return `+${country} (${area}) ${first}`;
-  return `+${country} (${area}) ${first}-${last}`;
-}
-
-function isValidWhatsapp(value: string) {
-  return value.replace(/\D/g, "").length >= 12;
-}
 
 function buildRegion(countryCode: string, stateCode: string, city: string) {
   const country = LOCATION_OPTIONS[countryCode as CountryCode]?.name ?? countryCode;
@@ -66,47 +32,17 @@ export default function Onboarding() {
   const [displayName, setDisplayName] = useState(user?.displayName ?? "");
   const [firstName, setFirstName] = useState(user?.firstName ?? "");
   const [lastName, setLastName] = useState(user?.lastName ?? "");
-  const [whatsapp, setWhatsapp] = useState(applyWhatsappMask(user?.whatsapp ?? ""));
+  const [whatsapp, setWhatsapp] = useState(user?.whatsapp ?? "");
   const [country, setCountry] = useState<CountryCode>("BR");
   const [stateCode, setStateCode] = useState("SP");
   const [city, setCity] = useState("São Paulo");
-  const [profileImageUrl, setProfileImageUrl] = useState(user?.profileImageUrl ?? "");
-  const [isUploading, setIsUploading] = useState(false);
 
   const states = useMemo(() => Object.keys(LOCATION_OPTIONS[country].states), [country]);
   const cities = useMemo<string[]>(() => Array.from((LOCATION_OPTIONS[country].states as Record<string, readonly string[]>)[stateCode] ?? []), [country, stateCode]);
 
-  async function handlePhotoUpload(file: File | null) {
-    if (!file) return;
-    setIsUploading(true);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const response = await apiFetch("/api/media/upload", { method: "POST", body: formData });
-
-      if (!response.ok) {
-        throw new Error("UPLOAD_FAILED");
-      }
-
-      const payload = await response.json();
-      if (!payload?.url) throw new Error("UPLOAD_FAILED");
-      setProfileImageUrl(payload.url);
-    } catch {
-      toast({ title: t.common.error, description: t.onboarding.errors.uploadFailed, variant: "destructive" });
-    } finally {
-      setIsUploading(false);
-    }
-  }
-
   async function handleSubmit() {
-    if (!displayName.trim() || !whatsapp.trim() || !city) {
+    if (!displayName.trim() || !city) {
       toast({ title: t.common.error, description: t.onboarding.errors.requiredFields, variant: "destructive" });
-      return;
-    }
-
-    if (!isValidWhatsapp(whatsapp)) {
-      toast({ title: t.common.error, description: t.onboarding.errors.invalidWhatsapp, variant: "destructive" });
       return;
     }
 
@@ -115,8 +51,7 @@ export default function Onboarding() {
         displayName: displayName.trim(),
         firstName: firstName.trim() || undefined,
         lastName: lastName.trim() || undefined,
-        whatsapp,
-        profileImageUrl: profileImageUrl || undefined,
+        whatsapp: whatsapp.trim() || undefined,
         region: buildRegion(country, stateCode, city),
         onboardingCompleted: true,
       });
@@ -132,21 +67,13 @@ export default function Onboarding() {
     <div className="min-h-screen bg-secondary/20 flex items-center justify-center p-4">
       <Card className="w-full max-w-2xl">
         <CardHeader>
+          <div className="mx-auto mb-4">
+            <img src={logoUrl} alt="PetCrushes" className="w-full max-w-[220px] h-auto object-contain" />
+          </div>
           <CardTitle>{t.onboarding.title}</CardTitle>
           <CardDescription>{t.onboarding.subtitle}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-          <div className="space-y-2">
-            <Label>{t.onboarding.profilePhoto}</Label>
-            {profileImageUrl ? (
-              <img src={profileImageUrl} alt="Profile" className="h-24 w-24 rounded-full object-cover border" />
-            ) : null}
-            <Input type="file" accept="image/*" onChange={(e) => handlePhotoUpload(e.target.files?.[0] ?? null)} disabled={isUploading} />
-            {isUploading ? (
-              <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> {t.onboarding.uploadPhoto}</p>
-            ) : null}
-          </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>{t.onboarding.displayName}</Label>
@@ -154,11 +81,7 @@ export default function Onboarding() {
             </div>
             <div className="space-y-2">
               <Label>{t.onboarding.whatsapp}</Label>
-              <Input
-                value={whatsapp}
-                onChange={(e) => setWhatsapp(applyWhatsappMask(e.target.value))}
-                placeholder={t.onboarding.whatsappPlaceholder}
-              />
+              <Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder={t.onboarding.whatsappPlaceholder} />
             </div>
           </div>
 
@@ -176,51 +99,34 @@ export default function Onboarding() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>{t.onboarding.country}</Label>
-              <Select
-                value={country}
-                onValueChange={(value: CountryCode) => {
-                  setCountry(value);
-                  const firstState = Object.keys(LOCATION_OPTIONS[value].states)[0];
-                  setStateCode(firstState);
-                  const firstCity = (LOCATION_OPTIONS[value].states as Record<string, readonly string[]>)[firstState]?.[0] ?? "";
-                  setCity(firstCity);
-                }}
-              >
+              <Select value={country} onValueChange={(value: CountryCode) => {
+                setCountry(value);
+                const firstState = Object.keys(LOCATION_OPTIONS[value].states)[0];
+                setStateCode(firstState);
+                const firstCity = (LOCATION_OPTIONS[value].states as Record<string, readonly string[]>)[firstState]?.[0] ?? "";
+                setCity(firstCity);
+              }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(LOCATION_OPTIONS).map(([code, cfg]) => (
-                    <SelectItem key={code} value={code}>{cfg.name}</SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectContent>{Object.entries(LOCATION_OPTIONS).map(([code, cfg]) => (<SelectItem key={code} value={code}>{cfg.name}</SelectItem>))}</SelectContent>
               </Select>
             </div>
-
             <div className="space-y-2">
               <Label>{t.onboarding.state}</Label>
               <Select value={stateCode} onValueChange={(value) => { setStateCode(value); setCity((LOCATION_OPTIONS[country].states as Record<string, readonly string[]>)[value]?.[0] ?? ""); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {states.map((state) => (
-                    <SelectItem key={state} value={state}>{state}</SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectContent>{states.map((state) => (<SelectItem key={state} value={state}>{state}</SelectItem>))}</SelectContent>
               </Select>
             </div>
-
             <div className="space-y-2">
               <Label>{t.onboarding.city}</Label>
               <Select value={city} onValueChange={setCity}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {cities.map((cityName: string) => (
-                    <SelectItem key={cityName} value={cityName}>{cityName}</SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectContent>{cities.map((cityName: string) => (<SelectItem key={cityName} value={cityName}>{cityName}</SelectItem>))}</SelectContent>
               </Select>
             </div>
           </div>
 
-          <Button className="w-full" onClick={handleSubmit} disabled={isUpdatingMe || isUploading}>
+          <Button className="w-full" onClick={handleSubmit} disabled={isUpdatingMe}>
             {isUpdatingMe ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             {isUpdatingMe ? t.onboarding.saving : t.onboarding.save}
           </Button>

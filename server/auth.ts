@@ -14,12 +14,12 @@ function hasText(value: string | null | undefined) {
 export function isOnboardingCompleted(user: Awaited<ReturnType<typeof storage.getUser>> | null | undefined) {
   if (!user) return false;
   if (typeof user.onboardingCompleted === "boolean") return user.onboardingCompleted;
-  return hasText(user.displayName) && hasText(user.whatsapp) && hasText(user.region);
+  return hasText(user.displayName) && hasText(user.region);
 }
 
 export function toPublicUser(user: NonNullable<Awaited<ReturnType<typeof storage.getUser>>>) {
   const onboardingCompleted = isOnboardingCompleted(user);
-  const { passwordHash: _passwordHash, ...safeUser } = user;
+  const { passwordHash: _passwordHash, password_hash: _passwordHashLegacy, ...safeUser } = user as typeof user & { password_hash?: string };
   return {
     ...safeUser,
     onboardingCompleted,
