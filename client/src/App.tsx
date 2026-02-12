@@ -76,7 +76,7 @@ function Router() {
       <Route path="/" component={Landing} />
       <Route path="/auth" component={AuthPage} />
 
-      <Route path="/onboarding" component={Onboarding} />
+      <Route path="/onboarding" component={OnboardingRoute} />
       
 
       {/* Protected App Routes */}
