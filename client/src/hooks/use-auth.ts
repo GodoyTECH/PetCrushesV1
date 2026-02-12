@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { User } from "@shared/models/auth";
+import type { PublicUser } from "@shared/models/auth";
 import { apiFetch, setAuthToken } from "@/lib/api";
 
 const AUTH_ME_KEY = ["/api/auth/me"];
 
-type AuthResult = { token: string; user: User };
+type AuthResult = { token: string; user: PublicUser };
 type ApiErrorPayload = { error?: { code?: string; message?: string }; message?: string };
 
 type UpdateMeInput = {
@@ -21,7 +21,7 @@ function throwApiError(body: ApiErrorPayload, fallbackCode: string) {
   throw new Error(body?.error?.code ?? fallbackCode);
 }
 
-async function fetchUser(): Promise<User | null> {
+async function fetchUser(): Promise<PublicUser | null> {
   const response = await apiFetch("/api/auth/me");
   if (response.status === 401) return null;
   if (!response.ok) throw new Error("AUTH_LOAD_FAILED");
@@ -97,7 +97,7 @@ async function googleAuth(idToken: string): Promise<AuthResult> {
   return response.json();
 }
 
-async function updateMe(data: UpdateMeInput): Promise<User> {
+async function updateMe(data: UpdateMeInput): Promise<PublicUser> {
   const response = await apiFetch("/api/users/me", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },

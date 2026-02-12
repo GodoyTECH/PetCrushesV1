@@ -11,9 +11,8 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-purple-50 flex flex-col">
       <header className="p-6 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <img src={logoUrl} alt="PetCrushes" className="w-full max-w-[150px] h-auto object-contain" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-          <span className="text-sm font-display font-bold text-primary">PetCrushes</span>
+        <div className="flex items-center">
+          <img src={logoUrl} alt="PetCrushes" className="w-full max-w-[190px] h-auto object-contain" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
         </div>
         <div className="flex items-center gap-4">
           <LanguageToggle />

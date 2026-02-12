@@ -253,7 +253,7 @@ export const translations: Translations = {
       successTitle: 'Profile updated',
       successDescription: 'Your profile is complete. Welcome!',
       errors: {
-        requiredFields: 'Please fill in name, WhatsApp and location.',
+        requiredFields: 'Please fill in public name and location.',
         invalidWhatsapp: 'Please enter a valid WhatsApp number.',
         uploadFailed: 'Could not upload the photo now. Try again in a moment.',
         saveFailed: 'Could not save your profile now. Try again shortly.',
@@ -379,7 +379,7 @@ export const translations: Translations = {
       successTitle: 'Perfil atualizado',
       successDescription: 'Seu perfil está completo. Bem-vindo(a)!',
       errors: {
-        requiredFields: 'Preencha nome, WhatsApp e localização para continuar.',
+        requiredFields: 'Preencha nome público e localização para continuar.',
         invalidWhatsapp: 'Digite um número de WhatsApp válido.',
         uploadFailed: 'Não foi possível enviar a foto agora. Tente novamente em instantes.',
         saveFailed: 'Não foi possível salvar seu perfil agora. Tente novamente em instantes.',
