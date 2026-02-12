@@ -46,7 +46,7 @@ async function uploadFile(file: File) {
   const response = await apiFetch("/api/media/upload", { method: "POST", body: formData });
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
-    throw new Error(payload.message ?? "Falha no upload");
+    throw new Error(payload?.error?.message ?? payload.message ?? "Não foi possível enviar o arquivo agora. Tente novamente em instantes.");
   }
   return response.json() as Promise<{ url: string; duration?: number }>;
 }

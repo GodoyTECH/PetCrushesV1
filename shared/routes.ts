@@ -40,11 +40,20 @@ export const api = {
         400: errorSchemas.validation,
       },
     },
+    exists: {
+      method: 'GET' as const,
+      path: '/api/auth/exists' as const,
+      input: z.object({ email: z.string().email() }),
+      responses: {
+        200: z.object({ exists: z.boolean() }),
+        400: errorSchemas.validation,
+      },
+    },
     verifyOtp: {
       method: 'POST' as const,
       path: '/api/auth/verify-otp' as const,
       input: z.object({ email: z.string().email(), code: z.string().length(6) }),
-      responses: { 200: z.object({ token: z.string(), user: z.custom<typeof users.$inferSelect>() }), 400: errorSchemas.validation },
+      responses: { 200: z.object({ token: z.string(), user: z.custom<typeof users.$inferSelect>(), isNewUser: z.boolean() }), 400: errorSchemas.validation },
     },
     me: {
       method: 'GET' as const,
@@ -63,6 +72,34 @@ export const api = {
             400: errorSchemas.validation,
         }
     }
+  },
+
+  users: {
+    me: {
+      method: 'GET' as const,
+      path: '/api/users/me' as const,
+      responses: {
+        200: z.custom<typeof users.$inferSelect>(),
+        401: errorSchemas.forbidden,
+      },
+    },
+    updateMe: {
+      method: 'PATCH' as const,
+      path: '/api/users/me' as const,
+      input: z.object({
+        displayName: z.string().min(2).max(120).optional(),
+        whatsapp: z.string().min(8).max(32).optional(),
+        region: z.string().min(2).max(160).optional(),
+        profileImageUrl: z.string().url().optional(),
+        firstName: z.string().min(1).max(120).optional(),
+        lastName: z.string().min(1).max(120).optional(),
+        onboardingCompleted: z.boolean().optional(),
+      }),
+      responses: {
+        200: z.custom<typeof users.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
   },
   pets: {
     list: {

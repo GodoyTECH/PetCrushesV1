@@ -2,69 +2,120 @@ import { create } from 'zustand';
 
 type Language = 'pt-BR' | 'en';
 
-type Translations = {
-  [key in Language]: {
-    nav: {
-      home: string;
-      match: string;
-      donate: string;
-      chat: string;
-      profile: string;
-      mobipet: string;
-      login: string;
-      logout: string;
-    };
-    hero: {
-      title: string;
-      subtitle: string;
-      cta: string;
-    };
-    match: {
-      title: string;
-      filters: string;
-      empty: string;
-      species: string;
-      objective: string;
-      region: string;
-      like: string;
-      nope: string;
-    };
-    donate: {
-      title: string;
-      subtitle: string;
-      adopt: string;
-    };
-    common: {
-      loading: string;
-      error: string;
-      save: string;
-      cancel: string;
-      delete: string;
-      edit: string;
-      create: string;
-      yes: string;
-      no: string;
-      sales_warning: string;
-    };
-    mobipet: {
-      title: string;
-      subtitle: string;
-      desc: string;
-      driver_btn: string;
-      ride_btn: string;
-    };
-    forms: {
-      add_pet: string;
-      name: string;
-      species: string;
-      breed: string;
-      age: string;
-      about: string;
-      photos: string;
-      submit_pet: string;
-      gender: string;
+export type AppTranslations = {
+  nav: {
+    home: string;
+    match: string;
+    donate: string;
+    chat: string;
+    profile: string;
+    mobipet: string;
+    login: string;
+    logout: string;
+  };
+  hero: {
+    title: string;
+    subtitle: string;
+    cta: string;
+  };
+  match: {
+    title: string;
+    filters: string;
+    empty: string;
+    species: string;
+    objective: string;
+    region: string;
+    like: string;
+    nope: string;
+  };
+  donate: {
+    title: string;
+    subtitle: string;
+    adopt: string;
+  };
+  common: {
+    loading: string;
+    error: string;
+    save: string;
+    cancel: string;
+    delete: string;
+    edit: string;
+    create: string;
+    yes: string;
+    no: string;
+    sales_warning: string;
+  };
+  mobipet: {
+    title: string;
+    subtitle: string;
+    desc: string;
+    driver_btn: string;
+    ride_btn: string;
+  };
+  forms: {
+    add_pet: string;
+    name: string;
+    species: string;
+    breed: string;
+    age: string;
+    about: string;
+    photos: string;
+    submit_pet: string;
+    gender: string;
+  };
+  auth: {
+    title: string;
+    subtitle: string;
+    emailPlaceholder: string;
+    codePlaceholder: string;
+    signIn: string;
+    signUp: string;
+    sendCode: string;
+    verifyCode: string;
+    back: string;
+    createAccountHint: string;
+    signInHint: string;
+    otpSent: string;
+    otpSentDev: string;
+    codeStepTitle: string;
+    codeStepSubtitle: string;
+    policiesNote: string;
+    errors: {
+      invalidCode: string;
+      requestFailed: string;
+      invalidEmail: string;
+      generic: string;
+      emailNotRegistered: string;
+      emailAlreadyRegistered: string;
     };
   };
+  onboarding: {
+    title: string;
+    subtitle: string;
+    profilePhoto: string;
+    uploadPhoto: string;
+    displayName: string;
+    firstName: string;
+    lastName: string;
+    whatsapp: string;
+    country: string;
+    state: string;
+    city: string;
+    save: string;
+    saving: string;
+    successTitle: string;
+    successDescription: string;
+    errors: {
+      requiredFields: string;
+      invalidWhatsapp: string;
+      uploadFailed: string;
+      saveFailed: string;
+    };
+  };
+};
+
+type Translations = {
+  [key in Language]: AppTranslations;
 };
 
 export const translations: Translations = {
@@ -128,6 +179,55 @@ export const translations: Translations = {
       photos: 'Photos',
       submit_pet: 'Register Pet',
       gender: 'Gender',
+    },
+    auth: {
+      title: 'Welcome to PetCrushes',
+      subtitle: 'Choose how you want to continue.',
+      emailPlaceholder: 'you@email.com',
+      codePlaceholder: 'Enter 6-digit code',
+      signIn: 'Sign In',
+      signUp: 'Create Account',
+      sendCode: 'Send code',
+      verifyCode: 'Verify code',
+      back: 'Back',
+      createAccountHint: 'New here? Create account.',
+      signInHint: 'Already registered? Sign in.',
+      otpSent: 'Code sent to your email.',
+      otpSentDev: 'Code sent via dev mode. Check server logs.',
+      codeStepTitle: 'Check your email',
+      codeStepSubtitle: 'Enter your 6-digit code to continue.',
+      policiesNote: 'By continuing, you agree to our no-sales policy.',
+      errors: {
+        invalidCode: 'Invalid or expired code. Request a new one.',
+        requestFailed: 'We could not send the code right now. Please try again shortly.',
+        invalidEmail: 'Please check your email and try again.',
+        generic: 'Something went wrong. Please try again.',
+        emailNotRegistered: 'This email is not registered yet. Click Create Account.',
+        emailAlreadyRegistered: 'This email is already registered. Click Sign In.',
+      },
+    },
+    onboarding: {
+      title: 'Complete your profile',
+      subtitle: 'Add your basic info to continue safely.',
+      profilePhoto: 'Profile photo',
+      uploadPhoto: 'Upload photo',
+      displayName: 'Display name',
+      firstName: 'First name (optional)',
+      lastName: 'Last name (optional)',
+      whatsapp: 'WhatsApp',
+      country: 'Country',
+      state: 'State',
+      city: 'City',
+      save: 'Save and continue',
+      saving: 'Saving...',
+      successTitle: 'Profile updated',
+      successDescription: 'Your profile is complete. Welcome!',
+      errors: {
+        requiredFields: 'Please fill in name, WhatsApp and location.',
+        invalidWhatsapp: 'Please enter a valid WhatsApp number.',
+        uploadFailed: 'Could not upload the photo now. Try again in a moment.',
+        saveFailed: 'Could not save your profile now. Try again shortly.',
+      },
     }
   },
   'pt-BR': {
@@ -190,6 +290,55 @@ export const translations: Translations = {
       photos: 'Fotos',
       submit_pet: 'Registrar Pet',
       gender: 'Gênero',
+    },
+    auth: {
+      title: 'Bem-vindo ao PetCrushes',
+      subtitle: 'Escolha como deseja continuar.',
+      emailPlaceholder: 'voce@email.com',
+      codePlaceholder: 'Digite o código de 6 dígitos',
+      signIn: 'Entrar',
+      signUp: 'Criar conta',
+      sendCode: 'Enviar código',
+      verifyCode: 'Validar código',
+      back: 'Voltar',
+      createAccountHint: 'Primeiro acesso? Crie sua conta.',
+      signInHint: 'Já tem cadastro? Entre.',
+      otpSent: 'Código enviado para seu e-mail.',
+      otpSentDev: 'Código enviado em modo dev. Verifique os logs do servidor.',
+      codeStepTitle: 'Verifique seu e-mail',
+      codeStepSubtitle: 'Digite o código de 6 dígitos para continuar.',
+      policiesNote: 'Ao continuar, você concorda com nossa política de não vendas.',
+      errors: {
+        invalidCode: 'Código inválido ou expirado. Peça um novo.',
+        requestFailed: 'Não conseguimos enviar o código agora. Tente novamente em alguns instantes.',
+        invalidEmail: 'Verifique seu e-mail e tente novamente.',
+        generic: 'Algo deu errado. Tente novamente.',
+        emailNotRegistered: 'Esse e-mail ainda não está cadastrado. Clique em Criar conta.',
+        emailAlreadyRegistered: 'Esse e-mail já está cadastrado. Clique em Entrar.',
+      },
+    },
+    onboarding: {
+      title: 'Complete seu perfil',
+      subtitle: 'Adicione seus dados básicos para continuar com segurança.',
+      profilePhoto: 'Foto de perfil',
+      uploadPhoto: 'Enviar foto',
+      displayName: 'Nome de exibição',
+      firstName: 'Primeiro nome (opcional)',
+      lastName: 'Sobrenome (opcional)',
+      whatsapp: 'WhatsApp',
+      country: 'País',
+      state: 'Estado',
+      city: 'Cidade',
+      save: 'Salvar e continuar',
+      saving: 'Salvando...',
+      successTitle: 'Perfil atualizado',
+      successDescription: 'Seu perfil está completo. Bem-vindo!',
+      errors: {
+        requiredFields: 'Preencha nome, WhatsApp e localização.',
+        invalidWhatsapp: 'Digite um número de WhatsApp válido.',
+        uploadFailed: 'Não foi possível enviar a foto agora. Tente novamente em instantes.',
+        saveFailed: 'Não foi possível salvar seu perfil agora. Tente novamente em instantes.',
+      },
     }
   }
 };
@@ -200,8 +349,21 @@ interface LanguageState {
   t: Translations['en'] | Translations['pt-BR'];
 }
 
-export const useLanguage = create<LanguageState>((set, get) => ({
-  lang: 'pt-BR',
-  t: translations['pt-BR'],
-  setLang: (lang) => set({ lang, t: translations[lang] }),
+const LANGUAGE_STORAGE_KEY = 'petcrushes_lang';
+
+function getInitialLanguage(): Language {
+  const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+  if (stored === 'pt-BR' || stored === 'en') return stored;
+  return 'pt-BR';
+}
+
+const initialLanguage = getInitialLanguage();
+
+export const useLanguage = create<LanguageState>((set) => ({
+  lang: initialLanguage,
+  t: translations[initialLanguage],
+  setLang: (lang) => {
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
+    set({ lang, t: translations[lang] });
+  },
 }));
