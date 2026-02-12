@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertPetSchema, insertUserSchema, pets, users, matches, messages, reports } from './schema';
+import { insertPetSchema, insertUserSchema, insertAdoptionPostSchema, pets, users, matches, messages, reports, adoptionPosts } from './schema';
 
 import { BLOCKED_KEYWORDS } from "./schema";
 
@@ -55,6 +55,24 @@ export const api = {
       input: z.object({ email: z.string().email(), code: z.string().length(6) }),
       responses: { 200: z.object({ token: z.string(), user: z.custom<typeof users.$inferSelect>(), isNewUser: z.boolean() }), 400: errorSchemas.validation },
     },
+    signup: {
+      method: 'POST' as const,
+      path: '/api/auth/signup' as const,
+      input: z.object({ email: z.string().email(), password: z.string().min(8) }),
+      responses: { 200: z.object({ token: z.string(), user: z.custom<typeof users.$inferSelect>() }), 400: errorSchemas.validation },
+    },
+    login: {
+      method: 'POST' as const,
+      path: '/api/auth/login' as const,
+      input: z.object({ email: z.string().email(), password: z.string().min(1) }),
+      responses: { 200: z.object({ token: z.string(), user: z.custom<typeof users.$inferSelect>() }), 400: errorSchemas.validation },
+    },
+    google: {
+      method: 'POST' as const,
+      path: '/api/auth/google' as const,
+      input: z.object({ idToken: z.string().min(10) }),
+      responses: { 200: z.object({ token: z.string(), user: z.custom<typeof users.$inferSelect>() }), 400: errorSchemas.validation },
+    },
     me: {
       method: 'GET' as const,
       path: '/api/auth/me' as const,
@@ -75,6 +93,24 @@ export const api = {
   },
 
   users: {
+    signup: {
+      method: 'POST' as const,
+      path: '/api/auth/signup' as const,
+      input: z.object({ email: z.string().email(), password: z.string().min(8) }),
+      responses: { 200: z.object({ token: z.string(), user: z.custom<typeof users.$inferSelect>() }), 400: errorSchemas.validation },
+    },
+    login: {
+      method: 'POST' as const,
+      path: '/api/auth/login' as const,
+      input: z.object({ email: z.string().email(), password: z.string().min(1) }),
+      responses: { 200: z.object({ token: z.string(), user: z.custom<typeof users.$inferSelect>() }), 400: errorSchemas.validation },
+    },
+    google: {
+      method: 'POST' as const,
+      path: '/api/auth/google' as const,
+      input: z.object({ idToken: z.string().min(10) }),
+      responses: { 200: z.object({ token: z.string(), user: z.custom<typeof users.$inferSelect>() }), 400: errorSchemas.validation },
+    },
     me: {
       method: 'GET' as const,
       path: '/api/users/me' as const,
@@ -113,6 +149,7 @@ export const api = {
         region: z.string().optional(),
         isDonation: z.coerce.boolean().optional(),
         size: z.string().optional(),
+        mode: z.enum(["crushes", "friends"]).optional(),
         limit: z.coerce.number().int().min(1).max(50).optional(),
         page: z.coerce.number().int().min(1).optional(),
         cursor: z.string().optional(),
@@ -204,6 +241,7 @@ export const api = {
         objective: z.string().optional(),
         region: z.string().optional(),
         size: z.string().optional(),
+        mode: z.enum(["crushes", "friends"]).optional(),
         limit: z.coerce.number().int().min(1).max(50).optional(),
         page: z.coerce.number().int().min(1).optional(),
       }).optional(),
@@ -217,6 +255,27 @@ export const api = {
       },
     },
   },
+  adoptions: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/adoptions' as const,
+      input: z.object({ page: z.coerce.number().int().min(1).optional(), limit: z.coerce.number().int().min(1).max(50).optional() }).optional(),
+      responses: { 200: z.object({ items: z.array(z.custom<typeof adoptionPosts.$inferSelect>()), page: z.number(), limit: z.number(), hasMore: z.boolean() }) },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/adoptions' as const,
+      input: insertAdoptionPostSchema,
+      responses: { 201: z.custom<typeof adoptionPosts.$inferSelect>(), 400: errorSchemas.validation },
+    },
+    update: {
+      method: 'PATCH' as const,
+      path: '/api/adoptions/:id' as const,
+      input: insertAdoptionPostSchema.partial(),
+      responses: { 200: z.custom<typeof adoptionPosts.$inferSelect>(), 400: errorSchemas.validation, 404: errorSchemas.notFound },
+    },
+  },
+
   likes: {
     create: {
       method: 'POST' as const,

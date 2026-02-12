@@ -24,9 +24,10 @@ export default function MatchFeed() {
   const { t } = useLanguage();
   const { toast } = useToast();
   const [filters, setFilters] = useState<Filters>({});
+  const [mode, setMode] = useState<"crushes" | "friends">("crushes");
   const [page, setPage] = useState(1);
   const { data: myPet, isLoading: isLoadingMyPet } = useMyDefaultPet();
-  const { data: feed, isLoading } = useFeed({ ...filters, page, limit: 10 });
+  const { data: feed, isLoading } = useFeed({ ...filters, mode, page, limit: 10 });
   const likeMutation = useLikePet();
 
   const pets = feed?.items ?? [];
@@ -75,6 +76,12 @@ export default function MatchFeed() {
     <div className="h-full max-w-lg mx-auto flex flex-col p-4 md:p-6">
       <div className="mb-4">
         <ActivePetSelector />
+      </div>
+
+
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        <Button variant={mode === "crushes" ? "default" : "outline"} onClick={() => { setMode("crushes"); setCurrentIndex(0); }}>Crushes</Button>
+        <Button variant={mode === "friends" ? "default" : "outline"} onClick={() => { setMode("friends"); setCurrentIndex(0); }}>Friends</Button>
       </div>
 
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2">

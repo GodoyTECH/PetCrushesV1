@@ -1,8 +1,8 @@
 import { db } from "./db";
 import {
-  pets, likes, matches, messages, reports, otpCodes,
+  pets, likes, matches, messages, reports, otpCodes, adoptionPosts,
   type Pet, type InsertPet,
-  type Match, type Message, type InsertMessage, type Report, type OtpCode
+  type Match, type Message, type InsertMessage, type Report, type OtpCode, type AdoptionPost, type InsertAdoptionPost
 } from "@shared/schema";
 import { users, type User, type UpsertUser } from "@shared/models/auth";
 import { eq, or, and, desc, isNull, gte, sql, ne, asc } from "drizzle-orm";
@@ -12,6 +12,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByGoogleId(googleId: string): Promise<User | undefined>;
   createUser(user: UpsertUser): Promise<User>;
   updateUser(id: string, user: Partial<UpsertUser>): Promise<User>;
 
@@ -48,6 +49,12 @@ export interface IStorage {
   // Reports
   createReport(report: { reporterId: string; targetPetId: number; reason: string }): Promise<Report>;
 
+  // Adoptions
+  getAdoptionPost(id: number): Promise<AdoptionPost | undefined>;
+  getAdoptionPosts(page: number, limit: number): Promise<AdoptionPost[]>;
+  createAdoptionPost(post: InsertAdoptionPost): Promise<AdoptionPost>;
+  updateAdoptionPost(id: number, post: Partial<InsertAdoptionPost>): Promise<AdoptionPost>;
+
   // OTP
   invalidatePendingOtpsByEmail(email: string): Promise<void>;
   createOtpCode(data: { email: string; codeHash: string; expiresAt: Date }): Promise<OtpCode>;
@@ -70,6 +77,11 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async getUserByGoogleId(googleId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.googleId, googleId));
     return user;
   }
 
@@ -228,6 +240,28 @@ export class DatabaseStorage implements IStorage {
   async createReport(report: { reporterId: string; targetPetId: number; reason: string }): Promise<Report> {
     const [newReport] = await db.insert(reports).values(report).returning();
     return newReport;
+  }
+
+
+  async getAdoptionPost(id: number): Promise<AdoptionPost | undefined> {
+    const [post] = await db.select().from(adoptionPosts).where(eq(adoptionPosts.id, id));
+    return post;
+  }
+
+  async getAdoptionPosts(page: number, limit: number): Promise<AdoptionPost[]> {
+    const safePage = Math.max(1, page);
+    const safeLimit = Math.min(50, Math.max(1, limit));
+    return db.select().from(adoptionPosts).orderBy(desc(adoptionPosts.createdAt)).limit(safeLimit).offset((safePage - 1) * safeLimit);
+  }
+
+  async createAdoptionPost(post: InsertAdoptionPost): Promise<AdoptionPost> {
+    const [created] = await db.insert(adoptionPosts).values(post).returning();
+    return created;
+  }
+
+  async updateAdoptionPost(id: number, post: Partial<InsertAdoptionPost>): Promise<AdoptionPost> {
+    const [updated] = await db.update(adoptionPosts).set(post).where(eq(adoptionPosts.id, id)).returning();
+    return updated;
   }
 
   async invalidatePendingOtpsByEmail(email: string): Promise<void> {

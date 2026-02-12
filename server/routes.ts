@@ -6,7 +6,7 @@ import { z } from "zod";
 import multer from "multer";
 import crypto from "crypto";
 
-import { getAuthUser, isOnboardingCompleted, normalizeAuthEmail, requireAuth, requestOtp, verifyOtp } from "./auth";
+import { getAuthUser, isOnboardingCompleted, normalizeAuthEmail, requireAuth, requestOtp, verifyOtp, signToken } from "./auth";
 
 
 
@@ -31,6 +31,26 @@ function authError(code: string, message: string) {
 
 function hasText(value: string | null | undefined) {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+
+
+function validatePassword(password: string) {
+  return /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/.test(password);
+}
+
+function hashPassword(password: string) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.scryptSync(password, salt, 64).toString("hex");
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password: string, storedHash?: string | null) {
+  if (!storedHash) return false;
+  const [salt, hash] = storedHash.split(":");
+  if (!salt || !hash) return false;
+  const candidate = crypto.scryptSync(password, salt, 64).toString("hex");
+  return crypto.timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(candidate, "hex"));
 }
 
 function getCloudinaryConfig() {
@@ -111,6 +131,55 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
 
     return res.json(result);
+  });
+
+
+  app.post("/api/auth/signup", async (req, res) => {
+    const parsed = z.object({ email: z.string().email(), password: z.string() }).safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(authError("INVALID_PAYLOAD", "Revise os dados e tente novamente."));
+    const email = normalizeAuthEmail(parsed.data.email);
+    if (!validatePassword(parsed.data.password)) return res.status(400).json(authError("WEAK_PASSWORD", "Sua senha precisa ter no mínimo 8 caracteres, letra, número e símbolo."));
+
+    const exists = await storage.getUserByEmail(email);
+    if (exists?.passwordHash) return res.status(400).json(authError("EMAIL_ALREADY_REGISTERED", "Este e-mail já possui cadastro com senha."));
+
+    const user = exists
+      ? await storage.updateUser(exists.id, { passwordHash: hashPassword(parsed.data.password), authProvider: "email", verified: "true", lastLoginAt: new Date(), updatedAt: new Date() })
+      : await storage.createUser({ email, username: email, passwordHash: hashPassword(parsed.data.password), authProvider: "email", verified: "true", onboardingCompleted: false });
+
+    return res.json({ token: signToken(user.id), user: { ...user, onboardingCompleted: isOnboardingCompleted(user) } });
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    const parsed = z.object({ email: z.string().email(), password: z.string() }).safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(authError("INVALID_PAYLOAD", "Revise os dados e tente novamente."));
+    const user = await storage.getUserByEmail(normalizeAuthEmail(parsed.data.email));
+    if (!user || !verifyPassword(parsed.data.password, user.passwordHash)) {
+      return res.status(400).json(authError("INVALID_CREDENTIALS", "E-mail ou senha inválidos."));
+    }
+    const updated = await storage.updateUser(user.id, { lastLoginAt: new Date(), updatedAt: new Date() });
+    return res.json({ token: signToken(updated.id), user: { ...updated, onboardingCompleted: isOnboardingCompleted(updated) } });
+  });
+
+  app.post("/api/auth/google", async (req, res) => {
+    const parsed = z.object({ idToken: z.string().min(10) }).safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(authError("INVALID_PAYLOAD", "Token inválido."));
+
+    const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(parsed.data.idToken)}`);
+    if (!response.ok) return res.status(400).json(authError("INVALID_GOOGLE_TOKEN", "Não foi possível validar o Google login."));
+    const payload = await response.json() as { sub?: string; email?: string; aud?: string; email_verified?: string };
+    if (!payload.email || !payload.sub) return res.status(400).json(authError("INVALID_GOOGLE_TOKEN", "Token do Google inválido."));
+    if (process.env.GOOGLE_CLIENT_ID && payload.aud !== process.env.GOOGLE_CLIENT_ID) return res.status(400).json(authError("INVALID_GOOGLE_AUDIENCE", "Configuração Google inválida."));
+
+    const email = normalizeAuthEmail(payload.email);
+    let user = await storage.getUserByEmail(email);
+    if (!user) {
+      user = await storage.createUser({ email, username: email, googleId: payload.sub, authProvider: "google", verified: payload.email_verified === "true" ? "true" : "false", onboardingCompleted: false, lastLoginAt: new Date() });
+    } else {
+      user = await storage.updateUser(user.id, { googleId: payload.sub, authProvider: "google", verified: "true", lastLoginAt: new Date(), updatedAt: new Date() });
+    }
+
+    return res.json({ token: signToken(user.id), user: { ...user, onboardingCompleted: isOnboardingCompleted(user) } });
   });
 
   app.get("/api/auth/me", requireAuth, async (req, res) => {
@@ -218,7 +287,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const query = req.query as any;
     const page = Number(query.page || 1);
     const limit = Number(query.limit || 10);
-    const items = await storage.getPets({
+    const mode = query.mode === "friends" ? "friends" : "crushes";
+    const baseItems = await storage.getPets({
       species: query.species,
       gender: query.gender,
       objective: query.objective,
@@ -226,8 +296,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       size: query.size,
       excludeOwnerId: user.id,
       page,
-      limit,
+      limit: Math.min(50, Math.max(1, limit)) * 2,
     });
+    let items = baseItems;
+    if (mode === "crushes") {
+      items = baseItems.filter((pet) => !pet.neutered);
+    } else {
+      items = [...baseItems].sort((a, b) => Number((b.neutered || b.objective === "SOCIALIZATION")) - Number((a.neutered || a.objective === "SOCIALIZATION")));
+    }
+    items = items.slice(0, Math.min(50, Math.max(1, limit)));
 
     return res.json({
       items,
@@ -381,6 +458,38 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const { targetPetId, reason } = req.body;
     const report = await storage.createReport({ reporterId: user.id, targetPetId, reason });
     res.status(201).json(report);
+  });
+
+
+  app.get("/api/adoptions", async (req, res) => {
+    const page = Number((req.query as any).page || 1);
+    const limit = Number((req.query as any).limit || 12);
+    const items = await storage.getAdoptionPosts(page, limit);
+    return res.json({ items, page, limit, hasMore: items.length === Math.min(50, Math.max(1, limit)) });
+  });
+
+  app.post("/api/adoptions", requireAuth, async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json(authError("UNAUTHORIZED", "Faça login para continuar."));
+    const parsed = api.adoptions.create.input.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(authError("INVALID_PAYLOAD", "Revise os dados da adoção e tente novamente."));
+    if (contentFilter(parsed.data.description)) return res.status(400).json(authError("BLOCKED_CONTENT", "Remova termos de venda da descrição."));
+    const created = await storage.createAdoptionPost({ ...parsed.data, ownerId: user.id });
+    return res.status(201).json(created);
+  });
+
+  app.patch("/api/adoptions/:id", requireAuth, async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json(authError("UNAUTHORIZED", "Faça login para continuar."));
+    const id = Number(req.params.id);
+    const existing = await storage.getAdoptionPost(id);
+    if (!existing) return res.status(404).json(authError("NOT_FOUND", "Post não encontrado."));
+    if (existing.ownerId !== user.id) return res.status(403).json(authError("FORBIDDEN", "Você só pode editar seus posts."));
+    const parsed = api.adoptions.update.input.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(authError("INVALID_PAYLOAD", "Revise os dados da adoção e tente novamente."));
+    if (parsed.data.description && contentFilter(parsed.data.description)) return res.status(400).json(authError("BLOCKED_CONTENT", "Remova termos de venda da descrição."));
+    const updated = await storage.updateAdoptionPost(id, parsed.data);
+    return res.json(updated);
   });
 
   app.post("/api/media/upload", requireAuth, upload.single("file"), async (req, res) => {

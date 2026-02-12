@@ -84,6 +84,7 @@ export function useFeed(filters?: {
   objective?: string;
   region?: string;
   size?: string;
+  mode?: "crushes" | "friends";
   page?: number;
   limit?: number;
 }) {
@@ -175,6 +176,55 @@ export function useDeletePet() {
       queryClient.invalidateQueries({ queryKey: [api.pets.mine.path] });
       queryClient.invalidateQueries({ queryKey: [api.pets.mineActive.path] });
       queryClient.invalidateQueries({ queryKey: [api.feed.list.path] });
+    },
+  });
+}
+
+
+export type AdoptionPostInput = {
+  name: string;
+  species: string;
+  breed: string;
+  ageLabel: string;
+  country: string;
+  state: string;
+  city: string;
+  pedigree: boolean;
+  neutered: boolean;
+  description: string;
+  contact: string;
+  status?: "DISPONIVEL" | "ADOTADO";
+  photos: string[];
+};
+
+export function useAdoptions(page = 1, limit = 12) {
+  return useQuery({
+    queryKey: [api.adoptions.list.path, page, limit],
+    queryFn: async () => {
+      const res = await apiFetch(`${api.adoptions.list.path}?page=${page}&limit=${limit}`);
+      if (!res.ok) throw new Error("Failed to fetch adoptions");
+      return api.adoptions.list.responses[200].parse(await res.json());
+    },
+  });
+}
+
+export function useCreateAdoption() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: AdoptionPostInput) => {
+      const res = await apiFetch(api.adoptions.create.path, {
+        method: api.adoptions.create.method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...data, status: data.status ?? "DISPONIVEL" }),
+      });
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}));
+        throw new Error(error?.error?.message || error.message || 'Failed to create adoption post');
+      }
+      return api.adoptions.create.responses[201].parse(await res.json());
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.adoptions.list.path] });
     },
   });
 }

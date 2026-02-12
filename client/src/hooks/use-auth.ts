@@ -4,7 +4,7 @@ import { apiFetch, setAuthToken } from "@/lib/api";
 
 const AUTH_ME_KEY = ["/api/auth/me"];
 
-type VerifyOtpResult = { token: string; user: User; isNewUser: boolean };
+type VerifyOtpResult = { token: string; user: User; isNewUser?: boolean };
 type RequestOtpResult = {
   ok: boolean;
   expiresAt: string;
@@ -78,6 +78,47 @@ async function verifyOtp(email: string, code: string): Promise<VerifyOtpResult> 
   return response.json();
 }
 
+
+
+async function signup(email: string, password: string): Promise<VerifyOtpResult> {
+  const response = await apiFetch("/api/auth/signup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as ApiErrorPayload;
+    throwApiError(body, "SIGNUP_FAILED");
+  }
+  return response.json();
+}
+
+async function login(email: string, password: string): Promise<VerifyOtpResult> {
+  const response = await apiFetch("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as ApiErrorPayload;
+    throwApiError(body, "INVALID_CREDENTIALS");
+  }
+  return response.json();
+}
+
+async function googleAuth(idToken: string): Promise<VerifyOtpResult> {
+  const response = await apiFetch("/api/auth/google", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken }),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as ApiErrorPayload;
+    throwApiError(body, "INVALID_GOOGLE_TOKEN");
+  }
+  return response.json();
+}
+
 async function updateMe(data: UpdateMeInput): Promise<User> {
   const response = await apiFetch("/api/users/me", {
     method: "PATCH",
@@ -108,6 +149,10 @@ export function useAuth() {
     },
   });
 
+  const loginMutation = useMutation({ mutationFn: ({ email, password }: { email: string; password: string }) => login(email, password), onSuccess: ({ token, user }) => { setAuthToken(token); queryClient.setQueryData(AUTH_ME_KEY, user); } });
+  const signupMutation = useMutation({ mutationFn: ({ email, password }: { email: string; password: string }) => signup(email, password), onSuccess: ({ token, user }) => { setAuthToken(token); queryClient.setQueryData(AUTH_ME_KEY, user); } });
+  const googleMutation = useMutation({ mutationFn: ({ idToken }: { idToken: string }) => googleAuth(idToken), onSuccess: ({ token, user }) => { setAuthToken(token); queryClient.setQueryData(AUTH_ME_KEY, user); } });
+
   const updateMeMutation = useMutation({
     mutationFn: updateMe,
     onSuccess: (user) => {
@@ -127,12 +172,18 @@ export function useAuth() {
     checkAuthExists: existsMutation.mutateAsync,
     requestOtp: requestOtpMutation.mutateAsync,
     verifyOtp: verifyOtpMutation.mutateAsync,
+    loginWithPassword: loginMutation.mutateAsync,
+    signupWithPassword: signupMutation.mutateAsync,
+    loginWithGoogle: googleMutation.mutateAsync,
 
     updateMe: updateMeMutation.mutateAsync,
 
     isCheckingExists: existsMutation.isPending,
     isRequestingOtp: requestOtpMutation.isPending,
     isVerifyingOtp: verifyOtpMutation.isPending,
+    isLoggingInWithPassword: loginMutation.isPending,
+    isSigningUpWithPassword: signupMutation.isPending,
+    isGoogleLoading: googleMutation.isPending,
     isUpdatingMe: updateMeMutation.isPending,
     logout,
   };

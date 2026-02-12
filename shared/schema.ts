@@ -66,6 +66,30 @@ export const reports = pgTable("reports", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+
+export const adoptionPosts = pgTable("adoption_posts", {
+  id: serial("id").primaryKey(),
+  ownerId: varchar("owner_id").references(() => users.id).notNull(),
+  name: text("name").notNull(),
+  species: text("species").notNull(),
+  breed: text("breed").notNull(),
+  ageLabel: text("age_label").notNull(),
+  country: text("country").notNull(),
+  state: text("state").notNull(),
+  city: text("city").notNull(),
+  pedigree: boolean("pedigree").notNull().default(false),
+  neutered: boolean("neutered").notNull().default(false),
+  description: text("description").notNull(),
+  contact: text("contact").notNull(),
+  status: text("status", { enum: ["DISPONIVEL", "ADOTADO"] }).notNull().default("DISPONIVEL"),
+  photos: text("photos").array().notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("adoption_posts_owner_idx").on(table.ownerId),
+  index("adoption_posts_status_idx").on(table.status),
+  index("adoption_posts_created_at_idx").on(table.createdAt),
+]);
+
 export const otpCodes = pgTable("otp_codes", {
   id: uuid("id").defaultRandom().primaryKey(),
   email: text("email").notNull(),
@@ -111,6 +135,7 @@ export const insertUserSchema = createInsertSchema(users).omit({ id: true, creat
 export const insertPetSchema = createInsertSchema(pets).omit({ id: true, createdAt: true, isActive: true });
 export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
 export const insertReportSchema = createInsertSchema(reports).omit({ id: true, createdAt: true, status: true });
+export const insertAdoptionPostSchema = createInsertSchema(adoptionPosts).omit({ id: true, createdAt: true, ownerId: true });
 
 // === EXPLICIT API TYPES ===
 
@@ -126,6 +151,8 @@ export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Report = typeof reports.$inferSelect;
 export type OtpCode = typeof otpCodes.$inferSelect;
+export type AdoptionPost = typeof adoptionPosts.$inferSelect;
+export type InsertAdoptionPost = typeof adoptionPosts.$inferInsert;
 
 // API Requests
 export type CreatePetRequest = InsertPet;
