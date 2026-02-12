@@ -157,7 +157,7 @@ export default function Onboarding() {
               <Input
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(applyWhatsappMask(e.target.value))}
-                placeholder="+55 (11) 99999-9999"
+                placeholder={t.onboarding.whatsappPlaceholder}
               />
             </div>
           </div>

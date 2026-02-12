@@ -10,6 +10,12 @@ import { useLanguage, type AppTranslations } from "@/lib/i18n";
 
 type AuthMode = "signin" | "signup";
 
+function isOnboardingComplete(user: any) {
+  if (!user) return false;
+  if (typeof user.onboardingCompleted === "boolean") return user.onboardingCompleted;
+  return Boolean(user.displayName && user.whatsapp && user.region);
+}
+
 function getHumanErrorMessage(codeOrMessage: string, t: AppTranslations) {
   const code = codeOrMessage?.trim();
   if (!code) return t.auth.errors.generic;
@@ -36,7 +42,7 @@ export default function AuthPage() {
   const [deliveryInfo, setDeliveryInfo] = useState<string | null>(null);
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
-  if (user) return <Redirect to="/app" />;
+  if (user) return <Redirect to={isOnboardingComplete(user) ? "/app" : "/onboarding"} />;
 
   async function startOtpFlow() {
     setError(null);
@@ -65,11 +71,8 @@ export default function AuthPage() {
     setError(null);
     try {
       const result = await verifyOtp({ email, code });
-      if (result.isNewUser) {
-        setLocation("/onboarding");
-        return;
-      }
-      setLocation("/app");
+      const shouldGoOnboarding = result.isNewUser || !isOnboardingComplete(result.user);
+      setLocation(shouldGoOnboarding ? "/onboarding" : "/app");
     } catch (err) {
       setError(err instanceof Error ? getHumanErrorMessage(err.message, t) : t.auth.errors.invalidCode);
     }

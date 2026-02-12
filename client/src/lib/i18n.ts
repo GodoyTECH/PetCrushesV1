@@ -99,6 +99,7 @@ export type AppTranslations = {
     firstName: string;
     lastName: string;
     whatsapp: string;
+    whatsappPlaceholder: string;
     country: string;
     state: string;
     city: string;
@@ -218,6 +219,7 @@ export const translations: Translations = {
       firstName: 'First name (optional)',
       lastName: 'Last name (optional)',
       whatsapp: 'WhatsApp',
+      whatsappPlaceholder: '+55 (11) 99999-9999',
       country: 'Country',
       state: 'State',
       city: 'City',
@@ -321,7 +323,29 @@ export const translations: Translations = {
         emailAlreadyRegistered: 'Esse e-mail já está cadastrado. Clique em Entrar.',
       },
     },
-    
+    onboarding: {
+      title: 'Complete seu perfil',
+      subtitle: 'Adicione suas informações básicas para continuar com segurança.',
+      profilePhoto: 'Foto de perfil',
+      uploadPhoto: 'Enviando foto...',
+      displayName: 'Nome público',
+      firstName: 'Nome (opcional)',
+      lastName: 'Sobrenome (opcional)',
+      whatsapp: 'WhatsApp',
+      whatsappPlaceholder: '+55 (11) 99999-9999',
+      country: 'País',
+      state: 'Estado',
+      city: 'Cidade',
+      save: 'Salvar e continuar',
+      saving: 'Salvando...',
+      successTitle: 'Perfil atualizado',
+      successDescription: 'Seu perfil está completo. Bem-vindo(a)!',
+      errors: {
+        requiredFields: 'Preencha nome, WhatsApp e localização para continuar.',
+        invalidWhatsapp: 'Digite um número de WhatsApp válido.',
+        uploadFailed: 'Não foi possível enviar a foto agora. Tente novamente em instantes.',
+        saveFailed: 'Não foi possível salvar seu perfil agora. Tente novamente em instantes.',
+      },
     }
   }
 };

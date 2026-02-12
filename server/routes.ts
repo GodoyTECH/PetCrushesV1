@@ -33,10 +33,6 @@ function hasText(value: string | null | undefined) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-function authError(code: string, message: string) {
-  return { error: { code, message } };
-}
-
 function getCloudinaryConfig() {
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
   const apiKey = process.env.CLOUDINARY_API_KEY;
