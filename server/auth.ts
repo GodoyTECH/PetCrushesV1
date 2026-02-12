@@ -17,6 +17,15 @@ export function isOnboardingCompleted(user: Awaited<ReturnType<typeof storage.ge
   return hasText(user.displayName) && hasText(user.whatsapp) && hasText(user.region);
 }
 
+export function toPublicUser(user: NonNullable<Awaited<ReturnType<typeof storage.getUser>>>) {
+  const onboardingCompleted = isOnboardingCompleted(user);
+  const { passwordHash: _passwordHash, ...safeUser } = user;
+  return {
+    ...safeUser,
+    onboardingCompleted,
+  };
+}
+
 function getJwtSecret() {
   const secret = process.env.JWT_SECRET;
   if (!secret) throw new Error("JWT_SECRET is required");
@@ -75,7 +84,7 @@ function generateOtpCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-function hashOtpCode(email: string, code: string) {
+export function hashOtpCodeForEmail(email: string, code: string) {
   return crypto
     .createHash("sha256")
     .update(`${getOtpSecret()}:${normalizeEmail(email)}:${code}`)
@@ -104,17 +113,21 @@ export async function requestOtp(emailInput: string, requestIp = "unknown") {
   let code = generateOtpCode();
   if (previousOtp) {
     for (let i = 0; i < 3; i += 1) {
-      const hash = hashOtpCode(email, code);
+      const hash = hashOtpCodeForEmail(email, code);
       if (hash !== previousOtp.codeHash) break;
       code = generateOtpCode();
     }
   }
 
-  const codeHash = hashOtpCode(email, code);
+  const codeHash = hashOtpCodeForEmail(email, code);
   await storage.createOtpCode({ email, codeHash, expiresAt });
   await storage.createOtpCode({ email: `${email}|${requestIp}`, codeHash, expiresAt });
 
   const delivery = await sendOtpEmail(email, code, expiresAt);
+
+  if (process.env.NODE_ENV === "production" && delivery.provider === "dev-console") {
+    return { error: "EMAIL_SERVICE_UNAVAILABLE", status: 503 } as const;
+  }
 
   return {
     ok: true,
@@ -137,7 +150,7 @@ export async function verifyOtp(emailInput: string, code: string) {
     return { error: "OTP attempts exceeded", status: 429 } as const;
   }
 
-  const codeHash = hashOtpCode(email, code.trim());
+  const codeHash = hashOtpCodeForEmail(email, code.trim());
   if (otp.codeHash !== codeHash) {
     const updatedOtp = await storage.incrementOtpAttempts(otp.id);
     if ((updatedOtp?.attempts ?? 0) >= OTP_MAX_ATTEMPTS) {
@@ -164,7 +177,7 @@ export async function verifyOtp(emailInput: string, code: string) {
 
   const token = signToken(user.id);
 
-  return { token, user: { ...user, onboardingCompleted: isOnboardingCompleted(user) }, isNewUser } as const;
+  return { token, user: toPublicUser(user), isNewUser } as const;
 
 
 }

@@ -6,7 +6,7 @@ import { z } from "zod";
 import multer from "multer";
 import crypto from "crypto";
 
-import { getAuthUser, isOnboardingCompleted, normalizeAuthEmail, requireAuth, requestOtp, verifyOtp, signToken } from "./auth";
+import { getAuthUser, hashOtpCodeForEmail, normalizeAuthEmail, requireAuth, requestOtp, signToken, toPublicUser } from "./auth";
 
 
 
@@ -14,10 +14,14 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 
 const OTP_REQUEST_SCHEMA = z.object({ email: z.string().email() });
-const OTP_VERIFY_SCHEMA = z.object({ email: z.string().email(), code: z.string().length(6) });
+const RESET_PASSWORD_SCHEMA = z.object({
+  email: z.string().email(),
+  otp: z.string().trim().length(6),
+  newPassword: z.string(),
+});
 const USER_ME_UPDATE_SCHEMA = z.object({
   displayName: z.string().trim().min(2).max(120).optional(),
-  whatsapp: z.string().trim().min(8).max(32).optional(),
+  whatsapp: z.union([z.string(), z.number()]).transform((value) => String(value).trim()).pipe(z.string().min(8).max(32)).optional(),
   region: z.string().trim().min(2).max(160).optional(),
   profileImageUrl: z.string().url().optional(),
   firstName: z.string().trim().min(1).max(120).optional(),
@@ -37,6 +41,21 @@ function hasText(value: string | null | undefined) {
 
 function validatePassword(password: string) {
   return /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/.test(password);
+}
+
+const authRateLimit = new Map<string, number[]>();
+
+function isRateLimited(key: string, limit: number, windowMs: number) {
+  const now = Date.now();
+  const windowStart = now - windowMs;
+  const hits = (authRateLimit.get(key) ?? []).filter((timestamp) => timestamp >= windowStart);
+  if (hits.length >= limit) {
+    authRateLimit.set(key, hits);
+    return true;
+  }
+  hits.push(now);
+  authRateLimit.set(key, hits);
+  return false;
 }
 
 function hashPassword(password: string) {
@@ -120,24 +139,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     return res.json(result);
   });
 
-  app.post("/api/auth/verify-otp", async (req, res) => {
-    const parsed = OTP_VERIFY_SCHEMA.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json(authError("INVALID_PAYLOAD", "Verifique os dados informados e tente novamente."));
-
-    const result = await verifyOtp(parsed.data.email, parsed.data.code);
-    if ("error" in result) {
-      const status = result.status ?? 400;
-      return res.status(status).json(authError("OTP_INVALID_OR_EXPIRED", "Código inválido ou expirado. Peça um novo."));
-    }
-
-    return res.json(result);
+  app.post("/api/auth/verify-otp", async (_req, res) => {
+    return res.status(410).json(authError("OTP_AUTH_DISABLED", "O código por e-mail agora é usado apenas para redefinir sua senha."));
   });
 
 
   app.post("/api/auth/signup", async (req, res) => {
-    const parsed = z.object({ email: z.string().email(), password: z.string() }).safeParse(req.body);
+    const parsed = z.object({ email: z.string().email(), password: z.string(), confirmPassword: z.string().optional() }).safeParse(req.body);
     if (!parsed.success) return res.status(400).json(authError("INVALID_PAYLOAD", "Revise os dados e tente novamente."));
     const email = normalizeAuthEmail(parsed.data.email);
+    if (isRateLimited(`signup:${req.ip}:${email}`, 6, 10 * 60_000)) {
+      return res.status(429).json(authError("RATE_LIMITED", "Muitas tentativas em pouco tempo. Aguarde um pouco e tente novamente."));
+    }
+    if (typeof parsed.data.confirmPassword === "string" && parsed.data.password !== parsed.data.confirmPassword) {
+      return res.status(400).json(authError("PASSWORD_MISMATCH", "A confirmação da senha não confere."));
+    }
     if (!validatePassword(parsed.data.password)) return res.status(400).json(authError("WEAK_PASSWORD", "Sua senha precisa ter no mínimo 8 caracteres, letra, número e símbolo."));
 
     const exists = await storage.getUserByEmail(email);
@@ -147,18 +163,94 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       ? await storage.updateUser(exists.id, { passwordHash: hashPassword(parsed.data.password), authProvider: "email", verified: "true", lastLoginAt: new Date(), updatedAt: new Date() })
       : await storage.createUser({ email, username: email, passwordHash: hashPassword(parsed.data.password), authProvider: "email", verified: "true", onboardingCompleted: false });
 
-    return res.json({ token: signToken(user.id), user: { ...user, onboardingCompleted: isOnboardingCompleted(user) } });
+    return res.json({ token: signToken(user.id), user: toPublicUser(user) });
   });
 
   app.post("/api/auth/login", async (req, res) => {
     const parsed = z.object({ email: z.string().email(), password: z.string() }).safeParse(req.body);
     if (!parsed.success) return res.status(400).json(authError("INVALID_PAYLOAD", "Revise os dados e tente novamente."));
-    const user = await storage.getUserByEmail(normalizeAuthEmail(parsed.data.email));
+    const email = normalizeAuthEmail(parsed.data.email);
+    if (isRateLimited(`login:${req.ip}:${email}`, 10, 10 * 60_000)) {
+      return res.status(429).json(authError("RATE_LIMITED", "Muitas tentativas em pouco tempo. Aguarde um pouco e tente novamente."));
+    }
+    const user = await storage.getUserByEmail(email);
     if (!user || !verifyPassword(parsed.data.password, user.passwordHash)) {
       return res.status(400).json(authError("INVALID_CREDENTIALS", "E-mail ou senha inválidos."));
     }
     const updated = await storage.updateUser(user.id, { lastLoginAt: new Date(), updatedAt: new Date() });
-    return res.json({ token: signToken(updated.id), user: { ...updated, onboardingCompleted: isOnboardingCompleted(updated) } });
+    return res.json({ token: signToken(updated.id), user: toPublicUser(updated) });
+  });
+
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    const parsed = OTP_REQUEST_SCHEMA.safeParse(req.body);
+    if (!parsed.success) {
+      return res.json({ message: "Se existir uma conta com este e-mail, enviaremos um código." });
+    }
+
+    const email = normalizeAuthEmail(parsed.data.email);
+    if (isRateLimited(`forgot:${req.ip}:${email}`, 4, 15 * 60_000)) {
+      return res.json({ message: "Se existir uma conta com este e-mail, enviaremos um código." });
+    }
+
+    const existingUser = await storage.getUserByEmail(email);
+    if (!existingUser) {
+      return res.json({ message: "Se existir uma conta com este e-mail, enviaremos um código." });
+    }
+
+    const result = await requestOtp(email, req.ip);
+    if ("error" in result) {
+      if (result.status === 503) {
+        return res.status(503).json(authError("EMAIL_SERVICE_UNAVAILABLE", "Nosso serviço de e-mail está temporariamente indisponível. Tente novamente em alguns instantes."));
+      }
+      return res.status(429).json(authError("OTP_REQUEST_FAILED", "Não conseguimos enviar o código agora. Tente novamente em alguns instantes."));
+    }
+
+    return res.json({ message: "Se existir uma conta com este e-mail, enviaremos um código." });
+  });
+
+  app.post("/api/auth/reset-password", async (req, res) => {
+    const parsed = RESET_PASSWORD_SCHEMA.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json(authError("INVALID_PAYLOAD", "Revise os dados e tente novamente."));
+
+    const email = normalizeAuthEmail(parsed.data.email);
+    if (isRateLimited(`reset:${req.ip}:${email}`, 6, 15 * 60_000)) {
+      return res.status(429).json(authError("RATE_LIMITED", "Muitas tentativas em pouco tempo. Aguarde um pouco e tente novamente."));
+    }
+    if (!validatePassword(parsed.data.newPassword)) {
+      return res.status(400).json(authError("WEAK_PASSWORD", "Sua nova senha precisa ter no mínimo 8 caracteres, letra, número e símbolo."));
+    }
+
+    const otp = await storage.getLatestPendingOtpByEmail(email);
+    if (!otp || otp.expiresAt.getTime() < Date.now()) {
+      if (otp) await storage.markOtpAsUsed(otp.id);
+      return res.status(400).json(authError("OTP_INVALID_OR_EXPIRED", "Código inválido ou expirado. Solicite um novo código."));
+    }
+
+    if (otp.attempts >= 5) {
+      await storage.markOtpAsUsed(otp.id);
+      return res.status(429).json(authError("OTP_ATTEMPTS_EXCEEDED", "Você excedeu as tentativas. Solicite um novo código."));
+    }
+
+    const otpHash = hashOtpCodeForEmail(email, parsed.data.otp.trim());
+
+    if (otpHash !== otp.codeHash) {
+      const updatedOtp = await storage.incrementOtpAttempts(otp.id);
+      if ((updatedOtp?.attempts ?? 0) >= 5) {
+        await storage.markOtpAsUsed(otp.id);
+      }
+      return res.status(400).json(authError("OTP_INVALID_OR_EXPIRED", "Código inválido ou expirado. Solicite um novo código."));
+    }
+
+    const user = await storage.getUserByEmail(email);
+    if (!user) {
+      await storage.markOtpAsUsed(otp.id);
+      return res.status(400).json(authError("RESET_FAILED", "Não foi possível redefinir sua senha. Solicite um novo código."));
+    }
+
+    await storage.markOtpAsUsed(otp.id);
+    await storage.updateUser(user.id, { passwordHash: hashPassword(parsed.data.newPassword), authProvider: "email", updatedAt: new Date() });
+
+    return res.json({ message: "Senha atualizada com sucesso. Faça login com sua nova senha." });
   });
 
   app.post("/api/auth/google", async (req, res) => {
@@ -179,21 +271,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       user = await storage.updateUser(user.id, { googleId: payload.sub, authProvider: "google", verified: "true", lastLoginAt: new Date(), updatedAt: new Date() });
     }
 
-    return res.json({ token: signToken(user.id), user: { ...user, onboardingCompleted: isOnboardingCompleted(user) } });
+    return res.json({ token: signToken(user.id), user: toPublicUser(user) });
   });
 
   app.get("/api/auth/me", requireAuth, async (req, res) => {
     const user = getAuthUser(req);
     if (!user) return res.status(401).json(authError("UNAUTHORIZED", "Faça login para continuar."));
 
-    return res.json({ ...user, onboardingCompleted: isOnboardingCompleted(user) });
+    return res.json(toPublicUser(user));
   });
 
   app.get("/api/users/me", requireAuth, async (req, res) => {
     const user = getAuthUser(req);
     if (!user) return res.status(401).json(authError("UNAUTHORIZED", "Faça login para continuar."));
 
-    return res.json({ ...user, onboardingCompleted: isOnboardingCompleted(user) });
+    return res.json(toPublicUser(user));
   });
 
   app.patch("/api/users/me", requireAuth, async (req, res) => {
@@ -217,7 +309,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         updatedAt: new Date(),
       });
 
-      return res.json({ ...updatedUser, onboardingCompleted: isOnboardingCompleted(updatedUser) });
+      return res.json(toPublicUser(updatedUser));
     } catch (error) {
       console.error("[users-me-patch]", error);
       return res.status(500).json(authError("PROFILE_UPDATE_FAILED", "Não foi possível salvar seu perfil agora. Tente novamente em instantes."));
