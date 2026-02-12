@@ -9,7 +9,10 @@ export function usePets(filters?: {
   gender?: string;
   objective?: string;
   region?: string;
+  size?: string;
   isDonation?: boolean;
+  limit?: number;
+  page?: number;
 }) {
   return useQuery({
     queryKey: [api.pets.list.path, filters],
@@ -22,10 +25,56 @@ export function usePets(filters?: {
         });
         url += `?${params.toString()}`;
       }
-      
+
       const res = await apiFetch(url);
       if (!res.ok) throw new Error('Failed to fetch pets');
       return api.pets.list.responses[200].parse(await res.json());
+    },
+  });
+}
+
+export function useMyPets() {
+  return useQuery({
+    queryKey: [api.pets.mine.path],
+    queryFn: async () => {
+      const res = await apiFetch(api.pets.mine.path);
+      if (!res.ok) throw new Error("Failed to fetch your pets");
+      return api.pets.mine.responses[200].parse(await res.json());
+    },
+  });
+}
+
+export function useMyDefaultPet() {
+  return useQuery({
+    queryKey: [api.pets.mineDefault.path],
+    queryFn: async () => {
+      const res = await apiFetch(api.pets.mineDefault.path);
+      if (!res.ok) throw new Error("Failed to fetch your default pet");
+      return api.pets.mineDefault.responses[200].parse(await res.json());
+    },
+  });
+}
+
+export function useFeed(filters?: {
+  species?: string;
+  gender?: string;
+  objective?: string;
+  region?: string;
+  size?: string;
+  page?: number;
+  limit?: number;
+}) {
+  return useQuery({
+    queryKey: [api.feed.list.path, filters],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      Object.entries(filters ?? {}).forEach(([key, value]) => {
+        if (value !== undefined && value !== "") params.append(key, String(value));
+      });
+      const query = params.toString();
+      const res = await apiFetch(query ? `${api.feed.list.path}?${query}` : api.feed.list.path);
+      if (!res.ok) throw new Error("Failed to fetch feed");
+      return api.feed.list.responses[200].parse(await res.json());
     },
   });
 }
@@ -54,14 +103,18 @@ export function useCreatePet() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      
+
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || 'Failed to create pet');
       }
       return api.pets.create.responses[201].parse(await res.json());
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [api.pets.list.path] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.pets.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.pets.mine.path] });
+      queryClient.invalidateQueries({ queryKey: [api.feed.list.path] });
+    },
   });
 }
 
@@ -76,11 +129,14 @@ export function useUpdatePet() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates),
       });
-      
+
       if (!res.ok) throw new Error('Failed to update pet');
       return api.pets.update.responses[200].parse(await res.json());
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [api.pets.list.path] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.pets.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.pets.mine.path] });
+    },
   });
 }
 
@@ -93,6 +149,10 @@ export function useDeletePet() {
       const res = await apiFetch(url, { method: api.pets.delete.method });
       if (!res.ok) throw new Error('Failed to delete pet');
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [api.pets.list.path] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.pets.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.pets.mine.path] });
+      queryClient.invalidateQueries({ queryKey: [api.feed.list.path] });
+    },
   });
 }

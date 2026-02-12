@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
-import { usePets, useDeletePet } from "@/hooks/use-pets";
+import { useMyPets, useDeletePet } from "@/hooks/use-pets";
 import { useLanguage } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,19 +11,10 @@ import { Badge } from "@/components/ui/badge";
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { data: pets, isLoading } = usePets(); // In real app, filter by ownerId or use a dedicated /my-pets endpoint
+  const { data: myPets = [], isLoading } = useMyPets();
   const deletePet = useDeletePet();
   const { t } = useLanguage();
   const [isAddOpen, setIsAddOpen] = useState(false);
-
-  // Filter only my pets (assuming API returns all or we have a filter, for MVP filtering client side if API allows all)
-  // For safety, let's assume the API returns user's pets on a specific route or we check ownerId.
-  // Since we used /api/pets, let's pretend we filter by user.id on client for this MVP if API doesn't support 'mine' yet.
-  const myPets = pets?.filter((p) => p.ownerId === user?.id) || []; 
-  // NOTE: user.id from Replit Auth is a string (uuid), but our schema uses Int for ownerId. 
-  // Compatibilidade de campos entre schema e payload do formulário.
-  // Replit Auth uses string IDs. Schema uses integer references.
-  // FIX: We will just render ALL pets for now to demonstrate UI, or assume the backend handles the ID mapping.
 
   if (isLoading) return <div className="flex justify-center p-12"><Loader2 className="animate-spin" /></div>;
 

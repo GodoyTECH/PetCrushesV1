@@ -5,7 +5,7 @@ import {
   type Match, type Message, type InsertMessage, type Report, type OtpCode
 } from "@shared/schema";
 import { users, type User, type UpsertUser } from "@shared/models/auth";
-import { eq, or, and, desc, isNull, gte, sql } from "drizzle-orm";
+import { eq, or, and, desc, isNull, gte, sql, ne } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -22,9 +22,13 @@ export interface IStorage {
     breed?: string;
     gender?: Pet["gender"];
     objective?: Pet["objective"];
+    size?: Pet["size"];
     region?: string;
     isDonation?: boolean;
     ownerId?: string; // For "My Pets" - changed to string
+    excludeOwnerId?: string;
+    limit?: number;
+    page?: number;
   }): Promise<Pet[]>;
   createPet(pet: InsertPet): Promise<Pet>;
   updatePet(id: number, pet: Partial<InsertPet>): Promise<Pet>;
@@ -87,20 +91,30 @@ export class DatabaseStorage implements IStorage {
     breed?: string;
     gender?: Pet["gender"];
     objective?: Pet["objective"];
+    size?: Pet["size"];
     region?: string;
     isDonation?: boolean;
     ownerId?: string;
+    excludeOwnerId?: string;
+    limit?: number;
+    page?: number;
   }): Promise<Pet[]> {
     const conditions = [];
     if (filters?.species) conditions.push(eq(pets.species, filters.species));
     if (filters?.breed) conditions.push(eq(pets.breed, filters.breed));
     if (filters?.gender) conditions.push(eq(pets.gender, filters.gender)); // Type cast if needed
     if (filters?.objective) conditions.push(eq(pets.objective, filters.objective));
+    if (filters?.size) conditions.push(eq(pets.size, filters.size));
     if (filters?.region) conditions.push(eq(pets.region, filters.region));
     if (filters?.isDonation !== undefined) conditions.push(eq(pets.isDonation, filters.isDonation));
     if (filters?.ownerId) conditions.push(eq(pets.ownerId, filters.ownerId));
+    if (filters?.excludeOwnerId) conditions.push(ne(pets.ownerId, filters.excludeOwnerId));
 
-    return await db.select().from(pets).where(and(...conditions)).orderBy(desc(pets.createdAt));
+    const page = Math.max(1, filters?.page ?? 1);
+    const limit = Math.min(50, Math.max(1, filters?.limit ?? 20));
+    const offset = (page - 1) * limit;
+
+    return await db.select().from(pets).where(and(...conditions)).orderBy(desc(pets.createdAt)).limit(limit).offset(offset);
   }
 
   async createPet(insertPet: InsertPet): Promise<Pet> {
