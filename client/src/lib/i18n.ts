@@ -87,6 +87,7 @@ export type AppTranslations = {
       generic: string;
       emailNotRegistered: string;
       emailAlreadyRegistered: string;
+
     };
   };
   onboarding: {
@@ -110,6 +111,7 @@ export type AppTranslations = {
       invalidWhatsapp: string;
       uploadFailed: string;
       saveFailed: string;
+
     };
   };
 };
@@ -205,6 +207,7 @@ export const translations: Translations = {
         emailNotRegistered: 'This email is not registered yet. Click Create Account.',
         emailAlreadyRegistered: 'This email is already registered. Click Sign In.',
       },
+
     },
     onboarding: {
       title: 'Complete your profile',
@@ -228,6 +231,7 @@ export const translations: Translations = {
         uploadFailed: 'Could not upload the photo now. Try again in a moment.',
         saveFailed: 'Could not save your profile now. Try again shortly.',
       },
+
     }
   },
   'pt-BR': {
@@ -317,28 +321,7 @@ export const translations: Translations = {
         emailAlreadyRegistered: 'Esse e-mail já está cadastrado. Clique em Entrar.',
       },
     },
-    onboarding: {
-      title: 'Complete seu perfil',
-      subtitle: 'Adicione seus dados básicos para continuar com segurança.',
-      profilePhoto: 'Foto de perfil',
-      uploadPhoto: 'Enviar foto',
-      displayName: 'Nome de exibição',
-      firstName: 'Primeiro nome (opcional)',
-      lastName: 'Sobrenome (opcional)',
-      whatsapp: 'WhatsApp',
-      country: 'País',
-      state: 'Estado',
-      city: 'Cidade',
-      save: 'Salvar e continuar',
-      saving: 'Salvando...',
-      successTitle: 'Perfil atualizado',
-      successDescription: 'Seu perfil está completo. Bem-vindo!',
-      errors: {
-        requiredFields: 'Preencha nome, WhatsApp e localização.',
-        invalidWhatsapp: 'Digite um número de WhatsApp válido.',
-        uploadFailed: 'Não foi possível enviar a foto agora. Tente novamente em instantes.',
-        saveFailed: 'Não foi possível salvar seu perfil agora. Tente novamente em instantes.',
-      },
+    
     }
   }
 };

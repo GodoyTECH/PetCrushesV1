@@ -5,7 +5,10 @@ import { api, BLOCKED_KEYWORDS } from "@shared/routes";
 import { z } from "zod";
 import multer from "multer";
 import crypto from "crypto";
+
 import { getAuthUser, isOnboardingCompleted, normalizeAuthEmail, requireAuth, requestOtp, verifyOtp } from "./auth";
+
+
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -28,6 +31,10 @@ function authError(code: string, message: string) {
 
 function hasText(value: string | null | undefined) {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function authError(code: string, message: string) {
+  return { error: { code, message } };
 }
 
 function getCloudinaryConfig() {

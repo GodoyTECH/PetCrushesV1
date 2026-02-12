@@ -163,7 +163,10 @@ export async function verifyOtp(emailInput: string, code: string) {
   }
 
   const token = signToken(user.id);
+
   return { token, user: { ...user, onboardingCompleted: isOnboardingCompleted(user) }, isNewUser } as const;
+
+
 }
 
 export function normalizeAuthEmail(emailInput: string) {

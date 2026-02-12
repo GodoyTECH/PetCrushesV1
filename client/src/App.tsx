@@ -18,11 +18,13 @@ import MobiPet from "@/pages/MobiPet";
 import NotFound from "@/pages/not-found";
 import Onboarding from "@/pages/Onboarding";
 
+
 function isOnboardingComplete(user: any) {
   if (!user) return false;
   if (typeof user.onboardingCompleted === "boolean") return user.onboardingCompleted;
   return Boolean(user.displayName && user.whatsapp && user.region);
 }
+
 
 function AppShell({ component: Component }: { component: React.ComponentType }) {
   const { isLoading, user } = useAuth();
@@ -73,7 +75,9 @@ function Router() {
     <Switch>
       <Route path="/" component={Landing} />
       <Route path="/auth" component={AuthPage} />
-      <Route path="/onboarding" component={OnboardingRoute} />
+
+      <Route path="/onboarding" component={Onboarding} />
+      
 
       {/* Protected App Routes */}
       <Route path="/app">
