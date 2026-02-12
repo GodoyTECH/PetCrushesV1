@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
+import logoUrl from "../../../logo.png";
 
 export default function Landing() {
   const { t } = useLanguage();
@@ -11,8 +12,8 @@ export default function Landing() {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-purple-50 flex flex-col">
       <header className="p-6 flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <span className="text-3xl">🐾</span>
-          <h1 className="text-2xl font-display font-bold text-primary">PetCrushes</h1>
+          <img src={logoUrl} alt="PetCrushes" className="w-full max-w-[150px] h-auto object-contain" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+          <span className="text-sm font-display font-bold text-primary">PetCrushes</span>
         </div>
         <div className="flex items-center gap-4">
           <LanguageToggle />

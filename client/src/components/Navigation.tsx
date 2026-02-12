@@ -5,6 +5,7 @@ import { Heart, Gift, MessageCircle, User, LogOut, Car, LogIn } from "lucide-rea
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import logoUrl from "../../../logo.png";
 
 export function Sidebar() {
   const [location] = useLocation();
@@ -24,8 +25,8 @@ export function Sidebar() {
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-64 h-screen fixed left-0 top-0 bg-white border-r border-border p-6 z-50">
         <Link href="/" className="flex items-center gap-2 mb-10 hover:opacity-80 transition-opacity">
-          <span className="text-3xl">🐾</span>
-          <h1 className="text-2xl font-display font-bold text-primary">PetCrushes</h1>
+          <img src={logoUrl} alt="PetCrushes" className="w-full max-w-[150px] h-auto object-contain" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+          <span className="text-sm font-display font-bold text-primary">PetCrushes</span>
         </Link>
 
         <nav className="flex-1 space-y-2">

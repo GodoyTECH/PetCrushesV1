@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLanguage } from "@/lib/i18n";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import { Redirect } from "wouter";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import logoUrl from "../../../logo.png";
 
 function isOnboardingComplete(user: any) {
   if (!user) return false;
@@ -16,100 +17,230 @@ function isOnboardingComplete(user: any) {
 
 const strongPassword = (value: string) => /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/.test(value);
 
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: { client_id: string; callback: (response: { credential?: string }) => void }) => void;
+          renderButton: (element: HTMLElement, options: Record<string, unknown>) => void;
+        };
+      };
+    };
+  }
+}
+
 export default function AuthPage() {
-  const { t } = useLanguage();
-  const { user, isLoading, checkAuthExists, requestOtp, verifyOtp, loginWithPassword, signupWithPassword, loginWithGoogle, isCheckingExists, isRequestingOtp, isVerifyingOtp, isLoggingInWithPassword, isSigningUpWithPassword, isGoogleLoading } = useAuth();
+  const { lang } = useLanguage();
+  const { user, isLoading, loginWithPassword, signupWithPassword, forgotPassword, resetPassword, loginWithGoogle, isLoggingInWithPassword, isSigningUpWithPassword, isForgettingPassword, isResettingPassword, isGoogleLoading } = useAuth();
 
   const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [authType, setAuthType] = useState<"otp" | "password">("password");
-  const [step, setStep] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [code, setCode] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [resetMode, setResetMode] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [deliveryInfo, setDeliveryInfo] = useState<string | null>(null);
+
+  const googleButtonRef = useRef<HTMLDivElement | null>(null);
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
+  const isPt = lang === "pt-BR";
+
+  const labels = useMemo(() => ({
+    title: isPt ? "Acesse sua conta" : "Access your account",
+    subtitle: isPt ? "Entre com e-mail e senha ou crie sua conta em segundos." : "Sign in with email and password or create your account in seconds.",
+    email: isPt ? "E-mail" : "Email",
+    password: isPt ? "Senha" : "Password",
+    confirmPassword: isPt ? "Confirmar senha" : "Confirm password",
+    enter: isPt ? "Entrar" : "Sign in",
+    create: isPt ? "Criar conta" : "Create account",
+    forgot: isPt ? "Esqueci minha senha" : "Forgot my password",
+    backToLogin: isPt ? "Voltar para login" : "Back to sign in",
+    requestOtp: isPt ? "Enviar código" : "Send code",
+    resetPassword: isPt ? "Redefinir senha" : "Reset password",
+    resetCode: isPt ? "Código de 6 dígitos" : "6-digit code",
+    newPassword: isPt ? "Nova senha" : "New password",
+    googleMissing: isPt ? "Google login ainda não configurado. Tente e-mail e senha." : "Google login is not configured yet. Please use email and password.",
+    genericError: isPt ? "Não conseguimos concluir agora. Tente novamente." : "We couldn't complete this right now. Please try again.",
+    weakPassword: isPt ? "A senha precisa ter no mínimo 8 caracteres, com letra, número e símbolo." : "Password must be at least 8 characters long and include a letter, number, and symbol.",
+    mismatch: isPt ? "A confirmação da senha não confere." : "Password confirmation does not match.",
+    resetInfo: isPt ? "Se existir uma conta com este e-mail, enviaremos um código." : "If an account exists with this email, we'll send a code.",
+    resetSuccess: isPt ? "Senha atualizada com sucesso. Faça login com sua nova senha." : "Password updated successfully. Sign in with your new password.",
+  }), [isPt]);
+
+  useEffect(() => {
+    if (!googleClientId || !googleButtonRef.current) return;
+
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+
+    script.onload = () => {
+      if (!window.google || !googleButtonRef.current) return;
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: async ({ credential }) => {
+          if (!credential) {
+            setError(labels.genericError);
+            return;
+          }
+          setError(null);
+          await loginWithGoogle({ idToken: credential }).catch(() => setError(labels.genericError));
+        },
+      });
+      googleButtonRef.current.innerHTML = "";
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: "outline",
+        size: "large",
+        width: "320",
+        text: "continue_with",
+      });
+    };
+
+    document.body.appendChild(script);
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, [googleClientId, labels.genericError, loginWithGoogle]);
 
   if (!isLoading && user) return <Redirect to={isOnboardingComplete(user) ? "/app" : "/onboarding"} />;
 
-  const isBusy = isCheckingExists || isRequestingOtp || isVerifyingOtp || isLoggingInWithPassword || isSigningUpWithPassword || isGoogleLoading;
+  const isBusy = isLoggingInWithPassword || isSigningUpWithPassword || isForgettingPassword || isResettingPassword || isGoogleLoading;
 
-  async function startOtpFlow() {
-    setError(null); setDeliveryInfo(null);
-    const normalizedEmail = email.trim().toLowerCase();
-    const existsResponse = await checkAuthExists(normalizedEmail);
-    if (mode === "signin" && !existsResponse.exists) return setError(t.auth.errors.emailNotRegistered);
-    if (mode === "signup" && existsResponse.exists) return setError(t.auth.errors.emailAlreadyRegistered);
-    const result = await requestOtp(normalizedEmail);
-    setDeliveryInfo(result.delivery.provider === "dev-console" ? t.auth.otpSentDev : t.auth.otpSent);
-    setStep("code");
+  function toHumanError(code: string) {
+    const map: Record<string, string> = {
+      INVALID_CREDENTIALS: isPt ? "E-mail ou senha inválidos." : "Invalid email or password.",
+      EMAIL_ALREADY_REGISTERED: isPt ? "Este e-mail já possui conta." : "This email is already registered.",
+      WEAK_PASSWORD: labels.weakPassword,
+      PASSWORD_MISMATCH: labels.mismatch,
+      OTP_INVALID_OR_EXPIRED: isPt ? "Código inválido ou expirado. Solicite um novo." : "Invalid or expired code. Please request a new one.",
+      EMAIL_SERVICE_UNAVAILABLE: isPt ? "Nosso serviço de e-mail está indisponível no momento." : "Our email service is currently unavailable.",
+      RATE_LIMITED: isPt ? "Muitas tentativas em pouco tempo. Aguarde um pouco." : "Too many attempts in a short time. Please wait a bit.",
+    };
+    return map[code] ?? labels.genericError;
   }
 
   async function submitPasswordAuth() {
     setError(null);
+    setMessage(null);
+    const normalizedEmail = email.trim().toLowerCase();
+
     if (mode === "signup") {
-      if (!strongPassword(password)) return setError(t.auth.errors.weakPassword);
-      if (password !== confirmPassword) return setError(t.auth.errors.passwordMismatch);
-      await signupWithPassword({ email: email.trim().toLowerCase(), password });
+      if (!strongPassword(password)) return setError(labels.weakPassword);
+      if (password !== confirmPassword) return setError(labels.mismatch);
+      await signupWithPassword({ email: normalizedEmail, password, confirmPassword });
       return;
     }
-    await loginWithPassword({ email: email.trim().toLowerCase(), password });
+
+    await loginWithPassword({ email: normalizedEmail, password });
   }
 
-  async function handleGoogleLogin() {
-    const token = window.prompt("Cole aqui seu Google id_token (modo inicial)");
-    if (!token) return;
-    await loginWithGoogle({ idToken: token });
+  async function submitForgotPassword() {
+    setError(null);
+    setMessage(null);
+    const normalizedEmail = email.trim().toLowerCase();
+    const response = await forgotPassword(normalizedEmail);
+    setMessage(response.message || labels.resetInfo);
+  }
+
+  async function submitResetPassword() {
+    setError(null);
+    setMessage(null);
+    if (!strongPassword(newPassword)) return setError(labels.weakPassword);
+
+    await resetPassword({ email: email.trim().toLowerCase(), otp: otp.trim(), newPassword });
+    setMessage(labels.resetSuccess);
+    setResetMode(false);
+    setOtp("");
+    setNewPassword("");
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-secondary/20 flex items-center justify-center p-4">
       <div className="absolute top-4 right-4"><LanguageToggle /></div>
       <Card className="w-full max-w-md shadow-2xl border-none">
-        <CardHeader className="text-center space-y-4 pb-8">
-          <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center text-4xl">🐾</div>
+        <CardHeader className="text-center space-y-4 pb-6">
+          <div className="mx-auto flex flex-col items-center gap-2">
+            <img src={logoUrl} alt="PetCrushes" className="w-full max-w-[180px] h-auto object-contain" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+            <span className="text-xs text-muted-foreground">PetCrushes</span>
+          </div>
           <div>
-            <CardTitle className="text-2xl font-display">{step === "email" ? t.auth.title : t.auth.codeStepTitle}</CardTitle>
-            <CardDescription>{step === "email" ? t.auth.subtitle : t.auth.codeStepSubtitle}</CardDescription>
+            <CardTitle className="text-2xl font-display">{resetMode ? labels.resetPassword : labels.title}</CardTitle>
+            <CardDescription>{resetMode ? labels.resetInfo : labels.subtitle}</CardDescription>
           </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant={mode === "signin" ? "default" : "outline"} onClick={() => setMode("signin")}>{t.auth.signIn}</Button>
-            <Button variant={mode === "signup" ? "default" : "outline"} onClick={() => setMode("signup")}>{t.auth.signUp}</Button>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant={authType === "password" ? "default" : "outline"} onClick={() => { setAuthType("password"); setStep("email"); }}>{t.auth.passwordAuth}</Button>
-            <Button variant={authType === "otp" ? "default" : "outline"} onClick={() => { setAuthType("otp"); setStep("email"); }}>{t.auth.otpAuth}</Button>
-          </div>
-
-          <Input type="email" placeholder={t.auth.emailPlaceholder} value={email} onChange={(e) => setEmail(e.target.value)} disabled={step === "code" || isBusy} />
-
-          {authType === "password" && step === "email" && (
+          {!resetMode ? (
             <>
-              <Input type="password" placeholder={t.auth.passwordPlaceholder} value={password} onChange={(e) => setPassword(e.target.value)} disabled={isBusy} />
-              {mode === "signup" && <Input type="password" placeholder={t.auth.confirmPasswordPlaceholder} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} disabled={isBusy} />}
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant={mode === "signin" ? "default" : "outline"} onClick={() => setMode("signin")}>{labels.enter}</Button>
+                <Button variant={mode === "signup" ? "default" : "outline"} onClick={() => setMode("signup")}>{labels.create}</Button>
+              </div>
+
+              <Input type="email" placeholder={labels.email} value={email} onChange={(e) => setEmail(e.target.value)} disabled={isBusy} />
+              <div className="relative">
+                <Input type={showPassword ? "text" : "password"} placeholder={labels.password} value={password} onChange={(e) => setPassword(e.target.value)} disabled={isBusy} />
+                <button type="button" className="absolute right-3 top-2.5 text-muted-foreground" onClick={() => setShowPassword((v) => !v)}>
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+
+              {mode === "signup" ? (
+                <>
+                  <div className="relative">
+                    <Input type={showConfirmPassword ? "text" : "password"} placeholder={labels.confirmPassword} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} disabled={isBusy} />
+                    <button type="button" className="absolute right-3 top-2.5 text-muted-foreground" onClick={() => setShowConfirmPassword((v) => !v)}>
+                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-1">
+                    <li>{isPt ? "mínimo 8 caracteres" : "minimum 8 characters"}</li>
+                    <li>{isPt ? "pelo menos 1 letra" : "at least 1 letter"}</li>
+                    <li>{isPt ? "pelo menos 1 número" : "at least 1 number"}</li>
+                    <li>{isPt ? "pelo menos 1 símbolo" : "at least 1 symbol"}</li>
+                  </ul>
+                </>
+              ) : null}
+
+              <Button className="w-full h-11" onClick={() => submitPasswordAuth().catch((e) => setError(toHumanError(String(e.message))))} disabled={isBusy}>
+                {isBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {mode === "signin" ? labels.enter : labels.create}
+              </Button>
+
+              <Button variant="ghost" className="px-0 justify-start" onClick={() => { setResetMode(true); setMessage(null); setError(null); }}>
+                {labels.forgot}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Input type="email" placeholder={labels.email} value={email} onChange={(e) => setEmail(e.target.value)} disabled={isBusy} />
+              <Input inputMode="numeric" maxLength={6} placeholder={labels.resetCode} value={otp} onChange={(e) => setOtp(e.target.value)} disabled={isBusy} />
+              <Input type="password" placeholder={labels.newPassword} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} disabled={isBusy} />
+
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" onClick={() => submitForgotPassword().catch((e) => setError(toHumanError(String(e.message))))} disabled={isBusy}>{labels.requestOtp}</Button>
+                <Button onClick={() => submitResetPassword().catch((e) => setError(toHumanError(String(e.message))))} disabled={isBusy}>{labels.resetPassword}</Button>
+              </div>
+
+              <Button variant="ghost" className="px-0 justify-start" onClick={() => setResetMode(false)}>{labels.backToLogin}</Button>
             </>
           )}
-          {authType === "otp" && step === "code" && <Input inputMode="numeric" maxLength={6} placeholder={t.auth.codePlaceholder} value={code} onChange={(e) => setCode(e.target.value)} disabled={isBusy} />}
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          {deliveryInfo && <p className="text-sm text-muted-foreground">{deliveryInfo}</p>}
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
 
-          {authType === "otp" ? (
-            step === "email" ?
-              <Button className="w-full h-12 text-lg" onClick={startOtpFlow} disabled={isBusy}>{isBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}{mode === "signin" ? t.auth.signIn : t.auth.signUp}</Button>
-              : <>
-                <Button className="w-full h-12 text-lg" onClick={() => verifyOtp({ email: email.trim().toLowerCase(), code }).catch((e) => setError(String(e.message || t.auth.errors.invalidCode)))} disabled={isBusy}>{isBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}{t.auth.verifyCode}</Button>
-                <Button variant="ghost" onClick={() => { setStep("email"); setCode(""); setError(null); }}>{t.auth.back}</Button>
-              </>
-          ) : (
-            <Button className="w-full h-12 text-lg" onClick={() => submitPasswordAuth().catch((e) => setError(String(e.message || t.auth.errors.generic)))} disabled={isBusy}>{isBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}{mode === "signin" ? t.auth.signIn : t.auth.signUp}</Button>
-          )}
-
-          <Button variant="outline" onClick={() => handleGoogleLogin().catch((e) => setError(String(e.message || t.auth.errors.generic)))} disabled={isBusy}>Continuar com Google</Button>
-          <Button variant="outline" disabled>Continuar com Apple (em breve)</Button>
-          <p className="text-xs text-center text-muted-foreground">{t.auth.policiesNote}</p>
+          <div className="space-y-2 pt-2">
+            <div ref={googleButtonRef} className="flex justify-center" />
+            {!googleClientId ? (
+              <Button variant="outline" onClick={() => setError(labels.googleMissing)}>Continuar com Google</Button>
+            ) : null}
+            <Button variant="outline" disabled>Continuar com Apple (em breve)</Button>
+          </div>
         </CardContent>
       </Card>
     </div>
