@@ -5,12 +5,17 @@ import { api, BLOCKED_KEYWORDS } from "@shared/routes";
 import { z } from "zod";
 import multer from "multer";
 import crypto from "crypto";
-import { getAuthUser, requireAuth, requestOtp, verifyOtp } from "./auth";
+import { getAuthUser, normalizeAuthEmail, requireAuth, requestOtp, verifyOtp } from "./auth";
 
 const upload = multer({ storage: multer.memoryStorage() });
 
+
 const OTP_REQUEST_SCHEMA = z.object({ email: z.string().email() });
 const OTP_VERIFY_SCHEMA = z.object({ email: z.string().email(), code: z.string().length(6) });
+
+function authError(code: string, message: string) {
+  return { error: { code, message } };
+}
 
 function getCloudinaryConfig() {
   const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
@@ -55,26 +60,38 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({ ok: true, name: "petcrushesv2-api" });
   });
 
+  app.get("/api/auth/exists", async (req, res) => {
+    const emailQuery = typeof req.query.email === "string" ? req.query.email : "";
+    const normalizedEmail = normalizeAuthEmail(emailQuery);
+    const parsed = OTP_REQUEST_SCHEMA.safeParse({ email: normalizedEmail });
+    if (!parsed.success) {
+      return res.status(400).json(authError("INVALID_EMAIL", "Verifique seu e-mail e tente novamente."));
+    }
+
+    const user = await storage.getUserByEmail(parsed.data.email);
+    return res.json({ exists: !!user });
+  });
+
   app.post("/api/auth/request-otp", async (req, res) => {
     const parsed = OTP_REQUEST_SCHEMA.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ message: "Invalid email" });
+    if (!parsed.success) return res.status(400).json(authError("INVALID_EMAIL", "Verifique seu e-mail e tente novamente."));
 
     const result = await requestOtp(parsed.data.email, req.ip);
     if ("error" in result) {
       const status = result.status ?? 400;
-      return res.status(status).json({ message: result.error });
+      return res.status(status).json(authError("OTP_REQUEST_FAILED", "Não conseguimos enviar o código agora. Tente novamente em alguns instantes."));
     }
     return res.json(result);
   });
 
   app.post("/api/auth/verify-otp", async (req, res) => {
     const parsed = OTP_VERIFY_SCHEMA.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ message: "Invalid payload" });
+    if (!parsed.success) return res.status(400).json(authError("INVALID_PAYLOAD", "Verifique os dados informados e tente novamente."));
 
     const result = await verifyOtp(parsed.data.email, parsed.data.code);
     if ("error" in result) {
       const status = result.status ?? 400;
-      return res.status(status).json({ message: result.error });
+      return res.status(status).json(authError("OTP_INVALID_OR_EXPIRED", "Código inválido ou expirado. Peça um novo."));
     }
 
     return res.json(result);
@@ -252,8 +269,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     try {
       uploaded = await uploadToCloudinary(req.file, resourceType);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Cloudinary upload failed";
-      return res.status(503).json({ message });
+      console.error("[media-upload]", error);
+      return res.status(503).json(authError("MEDIA_UPLOAD_UNAVAILABLE", "Não foi possível enviar a mídia agora. Tente novamente em instantes."));
     }
 
     res.json({

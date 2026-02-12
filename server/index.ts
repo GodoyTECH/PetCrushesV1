@@ -127,17 +127,26 @@ app.use((req, res, next) => {
 (async () => {
   await registerRoutes(httpServer, app);
 
-  app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
+  app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
 
-    console.error("Internal Server Error:", err);
+    console.error("[internal-error]", {
+      requestId: req.header("x-request-id") ?? null,
+      path: req.path,
+      method: req.method,
+      error: err,
+    });
 
     if (res.headersSent) {
       return next(err);
     }
 
-    return res.status(status).json({ message });
+    return res.status(status).json({
+      error: {
+        code: status >= 500 ? "INTERNAL_ERROR" : "REQUEST_ERROR",
+        message: status >= 500 ? "Não foi possível concluir sua solicitação agora." : "Não foi possível processar sua solicitação.",
+      },
+    });
   });
 
   // importantly only setup vite in development and after
