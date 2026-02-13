@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useLanguage } from "@/lib/i18n";
 import { useAuth } from "@/hooks/use-auth";
-import { Heart, Gift, MessageCircle, User, Car } from "lucide-react";
+import { Heart, Gift, MessageCircle, User, Car, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -41,6 +41,7 @@ export function Sidebar() {
     { href: "/app/match", icon: Heart, label: t.nav.match },
     { href: "/app/donate", icon: Gift, label: t.nav.donate },
     { href: "/app/chat", icon: MessageCircle, label: t.nav.chat },
+    { href: "/app/deu-crush", icon: Bell, label: t.nav.deuCrush },
     { href: "/app/mobipet", icon: Car, label: t.nav.mobipet },
     { href: "/app", icon: User, label: t.nav.profile },
   ];

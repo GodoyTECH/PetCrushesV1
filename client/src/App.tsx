@@ -14,6 +14,7 @@ import Dashboard from "@/pages/Dashboard";
 import MatchFeed from "@/pages/MatchFeed";
 import AdoptionFeed from "@/pages/AdoptionFeed";
 import Chat from "@/pages/Chat";
+import CrushesReceived from "@/pages/CrushesReceived";
 import MobiPet from "@/pages/MobiPet";
 import NotFound from "@/pages/not-found";
 import Onboarding from "@/pages/Onboarding";
@@ -95,6 +96,9 @@ function Router() {
       </Route>
       <Route path="/app/chat">
          <AppShell component={Chat} />
+      </Route>
+      <Route path="/app/deu-crush">
+         <AppShell component={CrushesReceived} />
       </Route>
       <Route path="/app/mobipet">
          <AppShell component={MobiPet} />

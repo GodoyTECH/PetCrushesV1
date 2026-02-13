@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { apiFetch } from "@/lib/api";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { LocationInput } from "@/components/LocationInput";
 
 export default function EditProfile() {
   const { user, updateMe, isUpdatingMe } = useAuth();
@@ -18,6 +19,11 @@ export default function EditProfile() {
   const [whatsapp, setWhatsapp] = useState(user?.whatsapp ?? "");
   const [region, setRegion] = useState(user?.region ?? "");
   const [profileImageUrl, setProfileImageUrl] = useState(user?.profileImageUrl ?? "");
+  const [country, setCountry] = useState((user as any)?.country ?? "");
+  const [stateName, setStateName] = useState((user as any)?.state ?? "");
+  const [city, setCity] = useState((user as any)?.city ?? "");
+  const [neighborhood, setNeighborhood] = useState((user as any)?.neighborhood ?? "");
+  const [placeId, setPlaceId] = useState((user as any)?.placeId ?? "");
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -55,6 +61,11 @@ export default function EditProfile() {
         whatsapp: whatsapp.trim() || undefined,
         region: region.trim() || undefined,
         profileImageUrl: profileImageUrl || undefined,
+        country: country || undefined,
+        state: stateName || undefined,
+        city: city || undefined,
+        neighborhood: neighborhood || undefined,
+        placeId: placeId || undefined,
       });
       toast({ title: "Perfil atualizado", description: "Suas alterações foram salvas." });
       setLocation("/app");
@@ -89,7 +100,12 @@ export default function EditProfile() {
 
           <div className="space-y-2"><Label>Nome público</Label><Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} /></div>
           <div className="space-y-2"><Label>WhatsApp (opcional)</Label><Input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="+55 (11) 99999-9999" /></div>
-          <div className="space-y-2"><Label>Região (opcional)</Label><Input value={region} onChange={(e) => setRegion(e.target.value)} /></div>
+          <LocationInput label="Localização aproximada" value={{ region, country, state: stateName, city, neighborhood, placeId }} onChange={(next) => { setRegion(next.region || ""); setCountry(next.country || ""); setStateName(next.state || ""); setCity(next.city || ""); setNeighborhood(next.neighborhood || ""); setPlaceId(next.placeId || ""); }} />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="space-y-2"><Label>Country</Label><Input value={country} onChange={(e) => setCountry(e.target.value)} /></div>
+            <div className="space-y-2"><Label>State</Label><Input value={stateName} onChange={(e) => setStateName(e.target.value)} /></div>
+            <div className="space-y-2"><Label>City</Label><Input value={city} onChange={(e) => setCity(e.target.value)} /></div>
+          </div>
 
           <Button onClick={handleSave} disabled={isUpdatingMe || isUploading} className="w-full">{isUpdatingMe ? "Salvando..." : "Salvar"}</Button>
         </CardContent>

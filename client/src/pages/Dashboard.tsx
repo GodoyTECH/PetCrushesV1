@@ -50,7 +50,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
         {[
             { label: 'Total Pets', val: myPets.length },
-            { label: 'Matches', val: 0 },
+            { label: 'Deu Crush', val: 0 },
             { label: 'Likes', val: 0 },
             { label: 'Views', val: 0 }
         ].map((stat) => (

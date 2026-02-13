@@ -492,6 +492,39 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+
+
+  app.get("/api/likes/received", requireAuth, async (req, res) => {
+    const user = getAuthUser(req);
+    if (!user) return res.status(401).json({ message: "Faça login para continuar. / Please sign in to continue." });
+
+    const requestedPetId = Number((req.query as any).petId);
+    const activePet = Number.isFinite(requestedPetId)
+      ? await storage.getPet(requestedPetId)
+      : await storage.getMyActivePet(user.id);
+
+    if (!activePet || activePet.ownerId !== user.id) {
+      return res.json({ items: [] });
+    }
+
+    const received = await storage.getReceivedLikes(activePet.id);
+    const items: any[] = [];
+    for (const like of received) {
+      const pet = await storage.getPet(like.likerPetId);
+      if (!pet) continue;
+      const reciprocal = await storage.hasLike(activePet.id, pet.id);
+      const existingMatch = await storage.findMatchBetweenPets(activePet.id, pet.id);
+      items.push({
+        likeId: like.id,
+        createdAt: like.createdAt,
+        pet,
+        isMutual: reciprocal || !!existingMatch,
+        matchId: existingMatch?.id ?? null,
+      });
+    }
+
+    return res.json({ items, activePetId: activePet.id });
+  });
   app.get(api.matches.list.path, requireAuth, async (req, res) => {
     const user = getAuthUser(req);
     if (!user) return res.status(401).json({ message: "Faça login para continuar. / Please sign in to continue." });
