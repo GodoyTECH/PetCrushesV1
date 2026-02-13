@@ -19,7 +19,7 @@ export function ActivePetSelector() {
           <SelectValue placeholder={t.match.selectActivePet} />
         </SelectTrigger>
         <SelectContent>
-          {myPets.map((pet) => (
+          {myPets.map((pet: any) => (
             <SelectItem key={pet.id} value={String(pet.id)}>
               {pet.displayName}
             </SelectItem>

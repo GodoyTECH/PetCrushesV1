@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { insertPetSchema, insertUserSchema, insertAdoptionPostSchema, pets, users, matches, messages, reports, adoptionPosts } from './schema';
+import type { PublicUser } from './models/auth';
 
 import { BLOCKED_KEYWORDS } from "./schema";
 
@@ -53,31 +54,31 @@ export const api = {
       method: 'POST' as const,
       path: '/api/auth/verify-otp' as const,
       input: z.object({ email: z.string().email(), code: z.string().length(6) }),
-      responses: { 200: z.object({ token: z.string(), user: z.custom<typeof users.$inferSelect>(), isNewUser: z.boolean() }), 400: errorSchemas.validation },
+      responses: { 200: z.object({ token: z.string(), user: z.custom<PublicUser>(), isNewUser: z.boolean() }), 400: errorSchemas.validation },
     },
     signup: {
       method: 'POST' as const,
       path: '/api/auth/signup' as const,
       input: z.object({ email: z.string().email(), password: z.string().min(8) }),
-      responses: { 200: z.object({ token: z.string(), user: z.custom<typeof users.$inferSelect>() }), 400: errorSchemas.validation },
+      responses: { 200: z.object({ token: z.string(), user: z.custom<PublicUser>() }), 400: errorSchemas.validation },
     },
     login: {
       method: 'POST' as const,
       path: '/api/auth/login' as const,
       input: z.object({ email: z.string().email(), password: z.string().min(1) }),
-      responses: { 200: z.object({ token: z.string(), user: z.custom<typeof users.$inferSelect>() }), 400: errorSchemas.validation },
+      responses: { 200: z.object({ token: z.string(), user: z.custom<PublicUser>() }), 400: errorSchemas.validation },
     },
     google: {
       method: 'POST' as const,
       path: '/api/auth/google' as const,
       input: z.object({ idToken: z.string().min(10) }),
-      responses: { 200: z.object({ token: z.string(), user: z.custom<typeof users.$inferSelect>() }), 400: errorSchemas.validation },
+      responses: { 200: z.object({ token: z.string(), user: z.custom<PublicUser>() }), 400: errorSchemas.validation },
     },
     me: {
       method: 'GET' as const,
       path: '/api/auth/me' as const,
       responses: {
-        200: z.custom<typeof users.$inferSelect>(),
+        200: z.custom<PublicUser>(),
         401: errorSchemas.forbidden,
       },
     },
@@ -86,7 +87,7 @@ export const api = {
         path: '/api/auth/me' as const,
         input: insertUserSchema.partial(),
         responses: {
-            200: z.custom<typeof users.$inferSelect>(),
+            200: z.custom<PublicUser>(),
             400: errorSchemas.validation,
         }
     }
@@ -97,25 +98,25 @@ export const api = {
       method: 'POST' as const,
       path: '/api/auth/signup' as const,
       input: z.object({ email: z.string().email(), password: z.string().min(8) }),
-      responses: { 200: z.object({ token: z.string(), user: z.custom<typeof users.$inferSelect>() }), 400: errorSchemas.validation },
+      responses: { 200: z.object({ token: z.string(), user: z.custom<PublicUser>() }), 400: errorSchemas.validation },
     },
     login: {
       method: 'POST' as const,
       path: '/api/auth/login' as const,
       input: z.object({ email: z.string().email(), password: z.string().min(1) }),
-      responses: { 200: z.object({ token: z.string(), user: z.custom<typeof users.$inferSelect>() }), 400: errorSchemas.validation },
+      responses: { 200: z.object({ token: z.string(), user: z.custom<PublicUser>() }), 400: errorSchemas.validation },
     },
     google: {
       method: 'POST' as const,
       path: '/api/auth/google' as const,
       input: z.object({ idToken: z.string().min(10) }),
-      responses: { 200: z.object({ token: z.string(), user: z.custom<typeof users.$inferSelect>() }), 400: errorSchemas.validation },
+      responses: { 200: z.object({ token: z.string(), user: z.custom<PublicUser>() }), 400: errorSchemas.validation },
     },
     me: {
       method: 'GET' as const,
       path: '/api/users/me' as const,
       responses: {
-        200: z.custom<typeof users.$inferSelect>(),
+        200: z.custom<PublicUser>(),
         401: errorSchemas.forbidden,
       },
     },
@@ -124,7 +125,7 @@ export const api = {
       path: '/api/users/me' as const,
       input: z.object({
         displayName: z.string().min(2).max(120).optional(),
-        whatsapp: z.string().min(8).max(32).optional(),
+        whatsapp: z.string().max(40).optional(),
         region: z.string().min(2).max(160).optional(),
         profileImageUrl: z.string().url().optional(),
         firstName: z.string().min(1).max(120).optional(),
@@ -132,7 +133,7 @@ export const api = {
         onboardingCompleted: z.boolean().optional(),
       }),
       responses: {
-        200: z.custom<typeof users.$inferSelect>(),
+        200: z.custom<PublicUser>(),
         400: errorSchemas.validation,
       },
     },
@@ -198,7 +199,7 @@ export const api = {
       method: 'GET' as const,
       path: '/api/pets/:id' as const,
       responses: {
-        200: z.custom<typeof pets.$inferSelect & { owner: typeof users.$inferSelect }>(),
+        200: z.custom<typeof pets.$inferSelect & { owner: PublicUser }>(),
         404: errorSchemas.notFound,
       },
     },

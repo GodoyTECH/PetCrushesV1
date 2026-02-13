@@ -74,7 +74,7 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {myPets.map((pet) => (
+          {myPets.map((pet: any) => (
             <Card key={pet.id} className="overflow-hidden border-none shadow-md hover:shadow-xl transition-all group">
               <div className="aspect-square relative overflow-hidden bg-secondary">
                 <img 

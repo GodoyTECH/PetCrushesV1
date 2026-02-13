@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, MoreVertical, ShieldAlert, MessageCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { BLOCKED_KEYWORDS } from "@shared/schema";
+import { BLOCKED_KEYWORDS } from "@/lib/api-contract";
 import { useToast } from "@/hooks/use-toast";
 import { ActivePetSelector } from "@/components/ActivePetSelector";
 import { useLanguage } from "@/lib/i18n";
@@ -66,7 +66,7 @@ export default function Chat() {
         </div>
         <ScrollArea className="flex-1">
           <div className="flex flex-col p-2 gap-1">
-            {matches?.map(match => {
+            {matches?.map((match: any) => {
               const otherPet = match.petAId === myPet.id ? match.petB : match.petA;
               return (
                 <button key={match.id} onClick={() => setSelectedMatchId(match.id)} className={cn("flex items-center gap-3 p-3 rounded-xl transition-colors text-left hover:bg-secondary/50", selectedMatchId === match.id ? "bg-secondary" : "") }>
@@ -93,7 +93,7 @@ export default function Chat() {
             <ScrollArea className="flex-1 p-4 bg-muted/10">
               <div className="space-y-4">
                 <div className="flex justify-center my-4"><div className="bg-yellow-100 text-yellow-800 text-xs px-3 py-1 rounded-full flex items-center gap-1"><ShieldAlert size={12} />Safety Tip: Never send money to anyone.</div></div>
-                {activeMatch.messages?.map(msg => (<div key={msg.id} className={cn("flex", msg.senderId === user?.id ? "justify-end" : "justify-start")}><div className={cn("max-w-[80%] px-4 py-2 rounded-2xl text-sm shadow-sm", msg.senderId === user?.id ? "bg-primary text-primary-foreground rounded-br-none" : "bg-white text-foreground rounded-bl-none")}>{msg.content}</div></div>))}
+                {activeMatch.messages?.map((msg: any) => (<div key={msg.id} className={cn("flex", msg.senderId === user?.id ? "justify-end" : "justify-start")}><div className={cn("max-w-[80%] px-4 py-2 rounded-2xl text-sm shadow-sm", msg.senderId === user?.id ? "bg-primary text-primary-foreground rounded-br-none" : "bg-white text-foreground rounded-bl-none")}>{msg.content}</div></div>))}
               </div>
             </ScrollArea>
 

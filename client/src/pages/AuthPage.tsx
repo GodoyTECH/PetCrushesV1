@@ -12,7 +12,7 @@ import logoUrl from "../../../logo.png";
 function isOnboardingComplete(user: any) {
   if (!user) return false;
   if (typeof user.onboardingCompleted === "boolean") return user.onboardingCompleted;
-  return Boolean(user.displayName && user.whatsapp && user.region);
+  return Boolean(user.displayName && user.region);
 }
 
 const strongPassword = (value: string) => /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/.test(value);
@@ -64,7 +64,7 @@ export default function AuthPage() {
     resetPassword: isPt ? "Redefinir senha" : "Reset password",
     resetCode: isPt ? "Código de 6 dígitos" : "6-digit code",
     newPassword: isPt ? "Nova senha" : "New password",
-    googleMissing: isPt ? "Google login ainda não configurado. Tente e-mail e senha." : "Google login is not configured yet. Please use email and password.",
+    googleMissing: isPt ? "Google login em breve. Continue com e-mail e senha." : "Google login coming soon. Please use email and password.",
     genericError: isPt ? "Não conseguimos concluir agora. Tente novamente." : "We couldn't complete this right now. Please try again.",
     weakPassword: isPt ? "A senha precisa ter no mínimo 8 caracteres, com letra, número e símbolo." : "Password must be at least 8 characters long and include a letter, number, and symbol.",
     mismatch: isPt ? "A confirmação da senha não confere." : "Password confirmation does not match.",
@@ -121,6 +121,7 @@ export default function AuthPage() {
       OTP_INVALID_OR_EXPIRED: isPt ? "Código inválido ou expirado. Solicite um novo." : "Invalid or expired code. Please request a new one.",
       EMAIL_SERVICE_UNAVAILABLE: isPt ? "Nosso serviço de e-mail está indisponível no momento." : "Our email service is currently unavailable.",
       RATE_LIMITED: isPt ? "Muitas tentativas em pouco tempo. Aguarde um pouco." : "Too many attempts in a short time. Please wait a bit.",
+      GOOGLE_AUTH_NOT_CONFIGURED: labels.googleMissing,
     };
     return map[code] ?? labels.genericError;
   }
@@ -166,8 +167,7 @@ export default function AuthPage() {
       <Card className="w-full max-w-md shadow-2xl border-none">
         <CardHeader className="text-center space-y-4 pb-6">
           <div className="mx-auto flex flex-col items-center gap-2">
-            <img src={logoUrl} alt="PetCrushes" className="w-full max-w-[180px] h-auto object-contain" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-            <span className="text-xs text-muted-foreground">PetCrushes</span>
+            <img src={logoUrl} alt="PetCrushes" className="w-full max-w-[230px] h-auto object-contain" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
           </div>
           <div>
             <CardTitle className="text-2xl font-display">{resetMode ? labels.resetPassword : labels.title}</CardTitle>
@@ -237,7 +237,7 @@ export default function AuthPage() {
           <div className="space-y-2 pt-2">
             <div ref={googleButtonRef} className="flex justify-center" />
             {!googleClientId ? (
-              <Button variant="outline" onClick={() => setError(labels.googleMissing)}>Continuar com Google</Button>
+              <Button variant="outline" onClick={() => setError(labels.googleMissing)}>Continuar com Google (em breve)</Button>
             ) : null}
             <Button variant="outline" disabled>Continuar com Apple (em breve)</Button>
           </div>

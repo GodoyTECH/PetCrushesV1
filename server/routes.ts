@@ -21,7 +21,7 @@ const RESET_PASSWORD_SCHEMA = z.object({
 });
 const USER_ME_UPDATE_SCHEMA = z.object({
   displayName: z.string().trim().min(2).max(120).optional(),
-  whatsapp: z.union([z.string(), z.number()]).transform((value) => String(value).trim()).pipe(z.string().min(8).max(32)).optional(),
+  whatsapp: z.string().trim().min(0).max(40).optional(),
   region: z.string().trim().min(2).max(160).optional(),
   profileImageUrl: z.string().url().optional(),
   firstName: z.string().trim().min(1).max(120).optional(),
@@ -257,11 +257,15 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const parsed = z.object({ idToken: z.string().min(10) }).safeParse(req.body);
     if (!parsed.success) return res.status(400).json(authError("INVALID_PAYLOAD", "Token inválido."));
 
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      return res.status(503).json(authError("GOOGLE_AUTH_NOT_CONFIGURED", "Google login em configuração. Use e-mail e senha por enquanto."));
+    }
+
     const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(parsed.data.idToken)}`);
     if (!response.ok) return res.status(400).json(authError("INVALID_GOOGLE_TOKEN", "Não foi possível validar o Google login."));
     const payload = await response.json() as { sub?: string; email?: string; aud?: string; email_verified?: string };
     if (!payload.email || !payload.sub) return res.status(400).json(authError("INVALID_GOOGLE_TOKEN", "Token do Google inválido."));
-    if (process.env.GOOGLE_CLIENT_ID && payload.aud !== process.env.GOOGLE_CLIENT_ID) return res.status(400).json(authError("INVALID_GOOGLE_AUDIENCE", "Configuração Google inválida."));
+    if (payload.aud !== process.env.GOOGLE_CLIENT_ID) return res.status(400).json(authError("INVALID_GOOGLE_AUDIENCE", "Configuração Google inválida."));
 
     const email = normalizeAuthEmail(payload.email);
     let user = await storage.getUserByEmail(email);
@@ -300,7 +304,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const input = parsed.data;
     const computedOnboardingCompleted =
       input.onboardingCompleted ??
-      (hasText(input.displayName ?? user.displayName) && hasText(input.whatsapp ?? user.whatsapp) && hasText(input.region ?? user.region));
+      (hasText(input.displayName ?? user.displayName) && hasText(input.region ?? user.region));
 
     try {
       const updatedUser = await storage.updateUser(user.id, {
@@ -410,7 +414,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const pet = await storage.getPet(Number(req.params.id));
     if (!pet) return res.status(404).json({ message: "Pet not found" });
     const owner = await storage.getUser(pet.ownerId);
-    res.json({ ...pet, owner });
+    res.json({ ...pet, owner: owner ? toPublicUser(owner) : undefined });
   });
 
   app.post(api.pets.create.path, requireAuth, async (req, res) => {
@@ -585,15 +589,19 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.post("/api/media/upload", requireAuth, upload.single("file"), async (req, res) => {
-    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+    if (!req.file) return res.status(400).json(authError("MEDIA_FILE_REQUIRED", "Selecione um arquivo para enviar."));
+
+    if (!getCloudinaryConfig()) {
+      return res.status(503).json(authError("CLOUDINARY_NOT_CONFIGURED", "Upload de mídia temporariamente indisponível. Tente novamente em instantes."));
+    }
     const isImage = req.file.mimetype.startsWith("image/");
     const isVideo = req.file.mimetype.startsWith("video/");
 
-    if (!isImage && !isVideo) return res.status(400).json({ message: "Only image/video files are allowed" });
+    if (!isImage && !isVideo) return res.status(400).json(authError("INVALID_MEDIA_TYPE", "Envie apenas imagem ou vídeo."));
 
     const maxBytes = isImage ? 10 * 1024 * 1024 : 60 * 1024 * 1024;
     if (req.file.size > maxBytes) {
-      return res.status(400).json({ message: isImage ? "Image must be <= 10MB" : "Video must be <= 60MB" });
+      return res.status(400).json(authError("MEDIA_FILE_TOO_LARGE", isImage ? "A imagem deve ter até 10MB." : "O vídeo deve ter até 60MB."));
     }
 
     const resourceType = isImage ? "image" : "video";

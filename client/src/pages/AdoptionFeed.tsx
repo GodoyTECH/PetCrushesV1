@@ -54,7 +54,7 @@ export default function AdoptionFeed() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {(data?.items ?? []).map((post) => (
+        {(data?.items ?? []).map((post: any) => (
           <Card key={post.id}>
             <img src={post.photos[0]} className="w-full h-48 object-cover" />
             <CardContent className="p-4 space-y-1">
