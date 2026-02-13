@@ -10,10 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useCreatePet } from "@/hooks/use-pets";
 import { useLanguage } from "@/lib/i18n";
 import { Loader2, Upload, AlertTriangle } from "lucide-react";
-import { BLOCKED_KEYWORDS } from "@shared/schema";
+import { BLOCKED_KEYWORDS, type CreatePetRequest } from "@/lib/api-contract";
 import { useMemo, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import type { CreatePetRequest } from "@shared/routes";
 import { apiFetch } from "@/lib/api";
 import { BREEDS_BY_SPECIES, getSpeciesLabel, SPECIES_OPTIONS, type PetSpecies } from "@/lib/pet-taxonomy";
 
