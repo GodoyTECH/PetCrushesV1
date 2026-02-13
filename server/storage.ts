@@ -41,6 +41,9 @@ export interface IStorage {
   createLike(likerPetId: number, targetPetId: number): Promise<{ like: { id: number; likerPetId: number; targetPetId: number; createdAt: Date | null }; isMatch: boolean; match?: Match }>;
   getMatches(petId: number): Promise<Match[]>;
   getMatch(id: number): Promise<Match | undefined>;
+  getReceivedLikes(targetPetId: number): Promise<Array<{ id: number; likerPetId: number; targetPetId: number; createdAt: Date | null }>>;
+  hasLike(likerPetId: number, targetPetId: number): Promise<boolean>;
+  findMatchBetweenPets(petAId: number, petBId: number): Promise<Match | undefined>;
 
   // Messages
   getMessages(matchId: number): Promise<Message[]>;
@@ -214,6 +217,23 @@ export class DatabaseStorage implements IStorage {
     }
 
     return { like, isMatch: false };
+  }
+
+
+  async getReceivedLikes(targetPetId: number): Promise<Array<{ id: number; likerPetId: number; targetPetId: number; createdAt: Date | null }>> {
+    return db.select().from(likes).where(eq(likes.targetPetId, targetPetId)).orderBy(desc(likes.createdAt));
+  }
+
+  async hasLike(likerPetId: number, targetPetId: number): Promise<boolean> {
+    const [row] = await db.select({ id: likes.id }).from(likes).where(and(eq(likes.likerPetId, likerPetId), eq(likes.targetPetId, targetPetId))).limit(1);
+    return !!row;
+  }
+
+  async findMatchBetweenPets(petAId: number, petBId: number): Promise<Match | undefined> {
+    const petLowId = Math.min(petAId, petBId);
+    const petHighId = Math.max(petAId, petBId);
+    const [row] = await db.select().from(matches).where(and(eq(matches.petLowId, petLowId), eq(matches.petHighId, petHighId))).limit(1);
+    return row;
   }
 
   async getMatches(petId: number): Promise<Match[]> {

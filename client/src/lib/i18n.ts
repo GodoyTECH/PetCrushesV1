@@ -10,6 +10,7 @@ export type AppTranslations = {
     chat: string;
     profile: string;
     mobipet: string;
+    deuCrush: string;
     login: string;
     logout: string;
   };
@@ -137,11 +138,12 @@ export const translations: Translations = {
   'en': {
     nav: {
       home: 'Home',
-      match: 'Match',
+      match: 'Crushes',
       donate: 'Adopt',
       chat: 'Chat',
       profile: 'My Pets',
       mobipet: 'MobiPet',
+      deuCrush: 'Deu Crush',
       login: 'Login',
       logout: 'Logout',
     },
@@ -151,7 +153,7 @@ export const translations: Translations = {
       cta: 'Get Started',
     },
     match: {
-      title: 'Find a Match',
+      title: 'Discover Crushes',
       filters: 'Filters',
       empty: 'No more pets in this area!',
       species: 'Species',
@@ -164,8 +166,8 @@ export const translations: Translations = {
       needActivePetTitle: 'Choose an active pet to continue',
       needActivePetDescription: 'Select one of your pets to like and start chats.',
       goToMyPets: 'Go to my pets',
-      matchedToastTitle: "It's a match!",
-      matchedToastDescription: "It's a match! Now you can start chatting.",
+      matchedToastTitle: "Deu Crush!",
+      matchedToastDescription: "Mutual crush! You can now chat.",
     },
     donate: {
       title: 'Adoption Center',
@@ -264,11 +266,12 @@ export const translations: Translations = {
   'pt-BR': {
     nav: {
       home: 'Início',
-      match: 'Encontros',
+      match: 'Crushes',
       donate: 'Adotar',
       chat: 'Conversas',
       profile: 'Meus Pets',
       mobipet: 'MobiPet',
+      deuCrush: 'Deu Crush',
       login: 'Entrar',
       logout: 'Sair',
     },
@@ -278,7 +281,7 @@ export const translations: Translations = {
       cta: 'Começar Agora',
     },
     match: {
-      title: 'Encontre um Par',
+      title: 'Descubra Crushes',
       filters: 'Filtros',
       empty: 'Não há mais pets nesta área!',
       species: 'Espécie',
@@ -291,8 +294,8 @@ export const translations: Translations = {
       needActivePetTitle: 'Escolha um pet ativo para continuar',
       needActivePetDescription: 'Selecione um dos seus pets para curtir e iniciar conversas.',
       goToMyPets: 'Ir para meus pets',
-      matchedToastTitle: 'Deu match!',
-      matchedToastDescription: 'Deu match! Agora vocês podem conversar.',
+      matchedToastTitle: 'Deu Crush!',
+      matchedToastDescription: 'Crush recíproco! Agora vocês podem conversar.',
     },
     donate: {
       title: 'Centro de Adoção',

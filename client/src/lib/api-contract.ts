@@ -11,7 +11,7 @@ export const API_PATHS = {
   },
   feed: { list: "/api/feed" },
   matches: { list: "/api/matches", get: "/api/matches/:id" },
-  likes: { create: "/api/likes" },
+  likes: { create: "/api/likes", received: "/api/likes/received" },
   reports: { create: "/api/reports" },
   messages: { create: "/api/matches/:id/messages" },
   adoptions: { list: "/api/adoptions", create: "/api/adoptions" },
@@ -32,11 +32,17 @@ export type CreatePetRequest = {
   ageMonths: number;
   pedigree: boolean;
   vaccinated?: boolean;
+  trained?: boolean;
   neutered?: boolean;
   healthNotes?: string | null;
   objective: "BREEDING" | "COMPANIONSHIP" | "SOCIALIZATION";
   isDonation?: boolean;
   region: string;
+  country?: string;
+  state?: string;
+  city?: string;
+  neighborhood?: string;
+  placeId?: string;
   about: string;
   photos: string[];
   videoUrl: string;

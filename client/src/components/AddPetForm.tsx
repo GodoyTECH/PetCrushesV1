@@ -15,6 +15,7 @@ import { useMemo, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetch } from "@/lib/api";
 import { BREEDS_BY_SPECIES, getSpeciesLabel, SPECIES_OPTIONS, type PetSpecies } from "@/lib/pet-taxonomy";
+import { LocationInput } from "@/components/LocationInput";
 
 const formSchema = z.object({
   displayName: z.string().min(1, "Nome obrigatório / Name is required"),
@@ -27,6 +28,7 @@ const formSchema = z.object({
   ageMonths: z.coerce.number().min(0, "Idade inválida / Invalid age"),
   pedigree: z.boolean(),
   vaccinated: z.boolean().optional(),
+  trained: z.boolean().optional(),
   neutered: z.boolean().optional(),
   healthNotes: z.string().nullable().optional(),
   objective: z.enum(["BREEDING", "COMPANIONSHIP", "SOCIALIZATION"]),
@@ -76,6 +78,7 @@ export function AddPetForm({ onSuccess }: { onSuccess: () => void }) {
       ageMonths: 0,
       pedigree: false,
       vaccinated: false,
+      trained: false,
       neutered: false,
       objective: "COMPANIONSHIP",
       isDonation: false,
@@ -120,11 +123,15 @@ export function AddPetForm({ onSuccess }: { onSuccess: () => void }) {
         ageMonths: data.ageMonths,
         pedigree: data.pedigree,
         vaccinated: data.vaccinated ?? false,
+        trained: data.trained ?? false,
         neutered: data.neutered ?? false,
         healthNotes: data.healthNotes,
         objective: data.objective,
         isDonation: data.isDonation ?? false,
-        region: `${data.country} / ${data.state} / ${data.city}`,
+        region: `${data.city}, ${data.state}, ${data.country}`,
+        country: data.country,
+        state: data.state,
+        city: data.city,
         about: data.about,
         photos: data.photos,
         videoUrl: data.videoUrl,
@@ -161,6 +168,16 @@ export function AddPetForm({ onSuccess }: { onSuccess: () => void }) {
 
         <FormField control={form.control} name="colorsRaw" render={({ field }) => (<FormItem><FormLabel>Cores (separadas por vírgula) / Colors (comma separated)</FormLabel><FormControl><Input placeholder="Preto, Branco" {...field} /></FormControl><FormMessage /></FormItem>)} />
 
+        <LocationInput
+          label="Localização aproximada"
+          value={{ region: `${form.watch("city")}, ${form.watch("state")}, ${form.watch("country")}` }}
+          onChange={(next) => {
+            if (next.country) form.setValue("country", next.country, { shouldValidate: true });
+            if (next.state) form.setValue("state", next.state, { shouldValidate: true });
+            if (next.city) form.setValue("city", next.city, { shouldValidate: true });
+          }}
+        />
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <FormField control={form.control} name="country" render={({ field }) => (<FormItem><FormLabel>Country</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
           <FormField control={form.control} name="state" render={({ field }) => (<FormItem><FormLabel>State</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
@@ -172,6 +189,7 @@ export function AddPetForm({ onSuccess }: { onSuccess: () => void }) {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <FormField control={form.control} name="pedigree" render={({ field }) => (<FormItem className="flex gap-2 items-center"><Checkbox checked={field.value} onCheckedChange={(checked) => field.onChange(checked === true)} /><FormLabel>Pedigree</FormLabel></FormItem>)} />
           <FormField control={form.control} name="vaccinated" render={({ field }) => (<FormItem className="flex gap-2 items-center"><Checkbox checked={field.value ?? false} onCheckedChange={(checked) => field.onChange(checked === true)} /><FormLabel>Vacinado</FormLabel></FormItem>)} />
+          <FormField control={form.control} name="trained" render={({ field }) => (<FormItem className="flex gap-2 items-center"><Checkbox checked={field.value ?? false} onCheckedChange={(checked) => field.onChange(checked === true)} /><FormLabel>Adestrado</FormLabel></FormItem>)} />
           <FormField control={form.control} name="neutered" render={({ field }) => (<FormItem className="flex gap-2 items-center"><Checkbox checked={field.value ?? false} onCheckedChange={(checked) => field.onChange(checked === true)} /><FormLabel>Castrado</FormLabel></FormItem>)} />
           <FormField control={form.control} name="isDonation" render={({ field }) => (<FormItem className="flex gap-2 items-center"><Checkbox checked={field.value ?? false} onCheckedChange={(checked) => field.onChange(checked === true)} /><FormLabel>Adoption</FormLabel></FormItem>)} />
         </div>

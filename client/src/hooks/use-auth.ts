@@ -11,6 +11,11 @@ type UpdateMeInput = {
   displayName?: string;
   whatsapp?: string;
   region?: string;
+  country?: string;
+  state?: string;
+  city?: string;
+  neighborhood?: string;
+  placeId?: string;
   profileImageUrl?: string;
   firstName?: string;
   lastName?: string;
